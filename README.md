@@ -36,7 +36,7 @@ Cliente (Postman / curl)
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone https://github.com/jjms95/microservices-challenges.git
 cd microservices-challenges
 ```
 
