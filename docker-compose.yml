@@ -1,0 +1,101 @@
+services:
+  # ─────────────────────────────────────────────
+  #  Databases
+  # ─────────────────────────────────────────────
+  database-employees:
+    image: postgres:16-alpine
+    container_name: database-employees
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: employees_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - employees_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d employees_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  database-departments:
+    image: postgres:16-alpine
+    container_name: database-departments
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: departments_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - departments_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d departments_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  #  Microservices
+  # ─────────────────────────────────────────────
+  departments-service:
+    build:
+      context: ./departments-service
+      dockerfile: Dockerfile
+    container_name: departments-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: database-departments
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: departments_db
+    depends_on:
+      database-departments:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+  employees-service:
+    build:
+      context: ./employees-service
+      dockerfile: Dockerfile
+    container_name: employees-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: database-employees
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: employees_db
+      DEPARTMENTS_SERVICE_URL: http://departments-service:8081
+    depends_on:
+      database-employees:
+        condition: service_healthy
+      departments-service:
+        condition: service_started
+    networks:
+      - microservices-network
+
+# ─────────────────────────────────────────────
+#  Volumes & Networks
+# ─────────────────────────────────────────────
+volumes:
+  employees_data:
+  departments_data:
+
+
+networks:
+  microservices-network:
+    driver: bridge
