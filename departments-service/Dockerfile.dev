@@ -1,0 +1,15 @@
+# ── Desarrollo: imagen ligera con devDependencies instaladas ──
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+# npm install (no ci) para incluir devDependencies (nest CLI, ts-node, etc.)
+RUN npm install
+
+COPY . .
+
+EXPOSE 8081
+
+# Hot-reload via NestJS CLI watcher
+CMD ["npm", "run", "start:dev"]
