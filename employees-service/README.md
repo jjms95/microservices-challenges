@@ -1,98 +1,164 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 👥 Employees Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Microservicio de gestión de empleados construido con **NestJS**, **TypeORM** y **PostgreSQL**.  
+Parte del sistema de onboarding de empleados (Reto 1 & 2).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📋 Endpoints
 
-## Description
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/employees` | Registra un nuevo empleado |
+| `GET` | `/employees` | Lista empleados (paginación + filtros) |
+| `GET` | `/employees/:id` | Obtiene un empleado por UUID |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Query params de `GET /employees`
 
-## Project setup
+| Parámetro | Tipo | Requerido | Default | Descripción |
+|---|---|---|---|---|
+| `name` | string | No | — | Filtro parcial por nombre (case-insensitive) |
+| `email` | string | No | — | Filtro parcial por email (case-insensitive) |
+| `page` | number | No | `1` | Número de página |
+| `limit` | number | No | `10` | Items por página |
 
-```bash
-$ npm install
-```
+## 🛠️ Tech Stack
 
-## Compile and run the project
+- **Runtime**: Node.js 20
+- **Framework**: NestJS + TypeScript
+- **ORM**: TypeORM
+- **Base de datos**: PostgreSQL 16
+- **Documentación**: Swagger (`@nestjs/swagger`)
+- **Resiliencia**: Circuit Breaker + Retry + Timeout
 
-```bash
-# development
-$ npm run start
+## ⚙️ Variables de Entorno
 
-# watch mode
-$ npm run start:dev
+| Variable | Descripción | Default |
+|---|---|---|
+| `DB_HOST` | Host de PostgreSQL | `localhost` |
+| `DB_PORT` | Puerto de PostgreSQL | `5432` |
+| `DB_USERNAME` | Usuario de PostgreSQL | `postgres` |
+| `DB_PASSWORD` | Contraseña de PostgreSQL | `postgres` |
+| `DB_NAME` | Nombre de la base de datos | `employees_db` |
+| `DEPARTMENTS_SERVICE_URL` | URL interna del servicio de departamentos | `http://localhost:8081` |
 
-# production mode
-$ npm run start:prod
-```
+## 🚀 Despliegue
 
-## Run tests
+### Opción A — Con Docker Compose (recomendado, sistema completo)
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Desde la raíz del proyecto:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Acceder a Swagger: **http://localhost:8080/api**
 
-## Resources
+### Opción B — Despliegue individual con Docker
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+# 1. Construir la imagen
+docker build -t employees-service .
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# 2. Correr el contenedor (requiere PostgreSQL accesible en localhost:5432)
+docker run -p 8080:8080 \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PORT=5432 \
+  -e DB_USERNAME=postgres \
+  -e DB_PASSWORD=postgres \
+  -e DB_NAME=employees_db \
+  -e DEPARTMENTS_SERVICE_URL=http://host.docker.internal:8081 \
+  employees-service
+```
 
-## Support
+### Opción C — Desarrollo local (sin Docker)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# 1. Instalar dependencias
+npm install
 
-## Stay in touch
+# 2. Configurar variables de entorno
+cp .env.example .env   # Editar según tu entorno local
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# 3. Correr en modo desarrollo
+npm run start:dev
+```
 
-## License
+## 🧪 Pruebas de los Endpoints
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Crear un empleado
+
+```bash
+curl -X POST http://localhost:8080/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@company.com",
+    "departmentId": "<UUID_DEPARTAMENTO_VÁLIDO>",
+    "hireDate": "2024-01-15"
+  }'
+```
+
+**Respuesta exitosa (201):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "John Doe",
+  "email": "john.doe@company.com",
+  "departmentId": "<UUID>",
+  "hireDate": "2024-01-15"
+}
+```
+
+**Error — departamento no existe (400):**
+```json
+{
+  "statusCode": 400,
+  "message": "Department with id \"<UUID>\" does not exist."
+}
+```
+
+**Error — departments-service no disponible (503):**
+```json
+{
+  "statusCode": 503,
+  "message": "Could not communicate with departments-service. The service may be temporarily unavailable."
+}
+```
+
+### Listar empleados (con paginación)
+
+```bash
+# Sin filtros
+curl http://localhost:8080/employees
+
+# Con filtros y paginación
+curl "http://localhost:8080/employees?name=john&page=1&limit=5"
+```
+
+**Respuesta (200):**
+```json
+{
+  "data": [ { "id": "...", "name": "John Doe", "email": "...", "departmentId": "...", "hireDate": "..." } ],
+  "currentPage": 1,
+  "totalPages": 3,
+  "totalItems": 25,
+  "itemsPerPage": 5
+}
+```
+
+### Obtener empleado por ID
+
+```bash
+curl http://localhost:8080/employees/550e8400-e29b-41d4-a716-446655440000
+```
+
+## 🔄 Patrones de Resiliencia
+
+Al registrar un empleado, el servicio valida el `departmentId` llamando a `departments-service` vía HTTP REST con los siguientes mecanismos de resiliencia:
+
+| Patrón | Configuración |
+|---|---|
+| **Timeout** | 5 segundos por petición |
+| **Retry** | Hasta 3 reintentos con backoff exponencial (500ms, 1000ms, 1500ms) |
+| **Circuit Breaker** | Se abre tras 3 fallos → 15s cooldown → HALF_OPEN para probar recuperación |
+
+> **Nota:** Los reintentos **no** se aplican a errores 404 (departamento no existe), ya que reintentar no cambiaría el resultado.

@@ -1,98 +1,156 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🏢 Departments Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Microservicio de gestión de departamentos construido con **NestJS**, **TypeORM** y **PostgreSQL**.  
+Parte del sistema de onboarding de empleados (Reto 2).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📋 Endpoints
 
-## Description
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/departments` | Crea un nuevo departamento |
+| `GET` | `/departments` | Lista departamentos (paginación + filtro por nombre) |
+| `GET` | `/departments/:id` | Obtiene un departamento por UUID |
+| `PUT` | `/departments/:id` | Actualiza un departamento por UUID |
+| `DELETE` | `/departments/:id` | Elimina un departamento por UUID |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Query params de `GET /departments`
 
-## Project setup
+| Parámetro | Tipo | Requerido | Default | Descripción |
+|---|---|---|---|---|
+| `name` | string | No | — | Filtro parcial por nombre (case-insensitive) |
+| `page` | number | No | `1` | Número de página |
+| `limit` | number | No | `10` | Items por página |
 
-```bash
-$ npm install
-```
+## 🛠️ Tech Stack
 
-## Compile and run the project
+- **Runtime**: Node.js 20
+- **Framework**: NestJS + TypeScript
+- **ORM**: TypeORM
+- **Base de datos**: PostgreSQL 16
+- **Documentación**: Swagger (`@nestjs/swagger`)
 
-```bash
-# development
-$ npm run start
+## ⚙️ Variables de Entorno
 
-# watch mode
-$ npm run start:dev
+| Variable | Descripción | Default |
+|---|---|---|
+| `DB_HOST` | Host de PostgreSQL | `localhost` |
+| `DB_PORT` | Puerto de PostgreSQL | `5432` |
+| `DB_USERNAME` | Usuario de PostgreSQL | `postgres` |
+| `DB_PASSWORD` | Contraseña de PostgreSQL | `postgres` |
+| `DB_NAME` | Nombre de la base de datos | `departments_db` |
 
-# production mode
-$ npm run start:prod
-```
+## 🚀 Despliegue
 
-## Run tests
+### Opción A — Con Docker Compose (recomendado, sistema completo)
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Desde la raíz del proyecto:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Acceder a Swagger: **http://localhost:8081/api**
 
-## Resources
+### Opción B — Despliegue individual con Docker
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+# 1. Construir la imagen
+docker build -t departments-service .
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# 2. Correr el contenedor (requiere PostgreSQL accesible en localhost:5433)
+docker run -p 8081:8081 \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PORT=5432 \
+  -e DB_USERNAME=postgres \
+  -e DB_PASSWORD=postgres \
+  -e DB_NAME=departments_db \
+  departments-service
+```
 
-## Support
+### Opción C — Desarrollo local (sin Docker)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# 1. Instalar dependencias
+npm install
 
-## Stay in touch
+# 2. Configurar variables de entorno
+cp .env.example .env   # Editar según tu entorno local
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# 3. Correr en modo desarrollo
+npm run start:dev
+```
 
-## License
+## 🧪 Pruebas de los Endpoints
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Crear un departamento
+
+```bash
+curl -X POST http://localhost:8081/departments \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Technology", "description": "Software and infrastructure team"}'
+```
+
+**Respuesta exitosa (201):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Technology",
+  "description": "Software and infrastructure team"
+}
+```
+
+### Listar departamentos (con paginación y filtro)
+
+```bash
+# Sin filtros
+curl http://localhost:8081/departments
+
+# Filtrar por nombre
+curl "http://localhost:8081/departments?name=tech&page=1&limit=5"
+```
+
+**Respuesta (200):**
+```json
+{
+  "data": [ { "id": "...", "name": "Technology", "description": "..." } ],
+  "currentPage": 1,
+  "totalPages": 2,
+  "totalItems": 12,
+  "itemsPerPage": 5
+}
+```
+
+### Obtener departamento por ID
+
+```bash
+curl http://localhost:8081/departments/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Error — no encontrado (404):**
+```json
+{
+  "statusCode": 404,
+  "message": "Department with id \"<UUID>\" not found."
+}
+```
+
+### Actualizar un departamento
+
+```bash
+curl -X PUT http://localhost:8081/departments/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Updated description"}'
+```
+
+### Eliminar un departamento
+
+```bash
+curl -X DELETE http://localhost:8081/departments/550e8400-e29b-41d4-a716-446655440000
+# Respuesta: 204 No Content
+```
+
+## 📝 Notas importantes
+
+- El `id` de cada departamento es un **UUID v4** generado automáticamente.
+- El campo `name` debe ser **único**.
+- Al eliminar un departamento que tiene empleados asociados, los empleados existentes no se eliminan (la relación es validada solo en el momento de creación del empleado vía HTTP REST desde `employees-service`).

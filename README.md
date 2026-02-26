@@ -1,82 +1,158 @@
-# Entorno: Retos de Microservicios (Challenges)
+# 🚀 Microservices Challenges — Sistema Completo
 
-> **⚠️ ATENCIÓN AGENTE IA:**  
-> Este entorno está destinado **únicamente** a la resolución de los retos incrementales de la materia de microservicios. Todas las aplicaciones que generes aquí deben adherirse estrictamente al stack y arquitecturas definidas a continuación.
+> Sistema de onboarding de empleados construido con microservicios NestJS, TypeORM, PostgreSQL y Docker Compose.
 
-## 🎯 Objetivo de este Entorno
-El propósito es construir progresivamente un sistema básico de onboarding de empleados. Se divide en retos donde se evalúa el despliegue en contenedores, la orquestación (Docker Compose), persistencia (Bases de Datos independientes) y comunicación básica (REST).
+## 📐 Arquitectura
 
-## 🛠️ Stack Tecnológico Restringido
-Para todas las aplicaciones dentro de este entorno debes usar:
-* **Backend:** Node.js con **NestJS** y **TypeScript**
-* **ORM:** **TypeORM**
-* **Base de Datos:** **PostgreSQL**
-* **Documentación API:** **Swagger** (`@nestjs/swagger`)
-* **Contenedores:** Docker y Docker Compose
-
----
-
-## 🏛️ Arquitectura de Referencia (Reto 2)
-
-Los retos evolucionarán desde un solo servicio monolítico (Reto 1) hasta un par de microservicios orquestados (Reto 2). A continuación, se presenta la arquitectura objetivo a la que debes llegar:
-
-```mermaid
-graph TD
-    Client([Cliente HTTP / Postman])
-    
-    subgraph "Red Docker Compose"
-        EmployeesAPI["👥 employees-service\n(NestJS :8080)"]
-        DepartmentsAPI["🏢 departments-service\n(NestJS :8081)"]
-        
-        DBEmployees[("🗄️ database-employees\n(PostgreSQL :5432)")]
-        DBDepartments[("🗄️ database-departments\n(PostgreSQL :5433)")]
-    end
-    
-    Client -->|POST/GET| EmployeesAPI
-    Client -->|POST/GET| DepartmentsAPI
-    
-    EmployeesAPI -->|Validar Departamento\nHTTP REST| DepartmentsAPI
-    
-    EmployeesAPI -->|Lectura/Escritura| DBEmployees
-    DepartmentsAPI -->|Lectura/Escritura| DBDepartments
+```
+Cliente (Postman / curl)
+        │
+        ├──► employees-service  (:8080)  ──► database-employees  (PostgreSQL :5432)
+        │           │
+        │           └── HTTP REST ──► departments-service (:8081)
+        │
+        └──► departments-service (:8081)  ──► database-departments (PostgreSQL :5433)
 ```
 
----
+## 🛠️ Tech Stack
 
-## 💾 Modelo de Datos y Diagrama ER
+| Componente | Tecnología |
+|---|---|
+| Runtime | Node.js 20 |
+| Framework | NestJS + TypeScript |
+| ORM | TypeORM |
+| Base de datos | PostgreSQL 16 |
+| Contenedores | Docker + Docker Compose |
+| Documentación API | Swagger (`@nestjs/swagger`) |
 
-```mermaid
-erDiagram
-    DEPARTMENT {
-        string id PK "UUID"
-        string name "Ej: Technology"
-        string description
-    }
+## 📦 Prerrequisitos
 
-    EMPLOYEE {
-        string id PK "UUID"
-        string name
-        string email
-        string departmentId FK "Validado vía REST"
-        date hireDate
-    }
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo
+- [Git](https://git-scm.com/)
+- Puertos libres: `8080`, `8081`, `5432`, `5433`
 
-    DEPARTMENT ||--|{ EMPLOYEE : "Valida la existencia"
+## ⚡ Despliegue Rápido (Sistema Completo)
+
+### 1. Clonar el repositorio
+
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd microservices-challenges
 ```
 
----
+### 2. Levantar todos los servicios
 
-## 🤖 Instrucciones para el Asistente IA (Tú)
+```bash
+docker compose up --build
+```
 
-1. **Nomenclatura en Inglés Requerida:** Todo el código, variables, nombres de archivos, carpetas, entidades de base de datos y *rutas de Endpoints* (ej. `/employees` no `/empleados`) deben estar obligatoriamente en **Inglés**. Utiliza convenciones estándar (`camelCase`, `kebab-case`, `PascalCase` según el contexto en NestJS).
-2. **Lee primero los PDFs de los retos:** Almacenados en esta carpeta `reto1.pdf` y `reto2.pdf`.
-3. **Detalles del Reto 1 (Servidor Web Básico):** Si el usuario te pide iniciar el **Reto 1**, concéntrate en construir únicamente el microservicio `employees-service`.
-    - Debe exponer `POST /employees` y `GET /employees/:id`.
-    - Aunque el PDF del Reto 1 dice que la BD no es obligatoria, prepáralo usando estructuras en memoria **o** TypeORM + PostgreSQL de una vez si el usuario lo prefiere, ya que el siguiente reto lo exigirá obligatoriamente.
-    - Debe incluir un único `Dockerfile` exponiendo el puerto 8080.
-4. **Detalles del Reto 2 (Orquestación y Persistencia):** Si el usuario te pide avanzar al **Reto 2**:
-    - Genera el archivo `docker-compose.yml` en la raíz.
-    - Crea un nuevo servicio `departments-service` con operaciones CRUD completas y su respectivo `Dockerfile`.
-    - Obligatoriamente debes conectar tanto el servicio de empleados como el de departamentos a sus respectivas instancias de **PostgreSQL** independientes usando volúmenes de Docker. La persistencia en memoria ya no es válida.
-5. **Comunicación:** La comunicación entre `employees-service` y `departments-service` (cuando un empleado se registra, debe validar que el departamento existe) es **Sincrónica por HTTP REST** consumiendo el endpoint del servicio destino. No implementes RabbitMQ ni Kafka aquí.
-6. **Swagger Requerido:** Toda API construida en ambos retos debe estar documentada. Agrega decoradores de `@nestjs/swagger` obligatoriamente en cada controlador para facilitar las pruebas del usuario.
+Esto levanta **4 contenedores** en orden:
+1. `database-departments` — PostgreSQL para departamentos
+2. `database-employees` — PostgreSQL para empleados
+3. `departments-service` — API de departamentos (espera a su BD)
+4. `employees-service` — API de empleados (espera a su BD y al servicio de departamentos)
+
+### 3. Verificar que todo esté corriendo
+
+```bash
+docker compose ps
+```
+
+Deberías ver 4 contenedores con estado `running`.
+
+### 4. Acceder a la documentación (Swagger UI)
+
+| Servicio | URL |
+|---|---|
+| Employees Service | http://localhost:8080/api |
+| Departments Service | http://localhost:8081/api |
+
+## 🧪 Flujo de Prueba End-to-End
+
+### Paso 1: Crear un departamento
+
+```bash
+curl -X POST http://localhost:8081/departments \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Technology", "description": "Software and infrastructure"}'
+```
+
+Guarda el `id` UUID del departamento creado.
+
+### Paso 2: Crear un empleado (con departamento válido)
+
+```bash
+curl -X POST http://localhost:8080/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@company.com",
+    "departmentId": "<UUID_DEL_DEPARTAMENTO>",
+    "hireDate": "2024-01-15"
+  }'
+```
+
+### Paso 3: Validar comunicación entre microservicios (departamento inexistente)
+
+```bash
+curl -X POST http://localhost:8080/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Doe",
+    "email": "jane@company.com",
+    "departmentId": "00000000-0000-0000-0000-000000000000",
+    "hireDate": "2024-01-15"
+  }'
+# Debe responder: 400 Bad Request - Department does not exist
+```
+
+### Paso 4: Listar empleados con paginación y filtros
+
+```bash
+# Todos los empleados
+curl http://localhost:8080/employees
+
+# Filtrar por nombre + paginación
+curl "http://localhost:8080/employees?name=john&page=1&limit=5"
+
+# Filtrar por email
+curl "http://localhost:8080/employees?email=@company.com"
+```
+
+## 🛑 Detener el sistema
+
+```bash
+# Detener contenedores (conserva volúmenes/datos)
+docker compose down
+
+# Detener y eliminar volúmenes (borra datos de BD)
+docker compose down -v
+```
+
+## 📁 Estructura del Proyecto
+
+```
+microservices-challenges/
+├── docker-compose.yml          ← Orquestación completa del sistema
+├── .gitignore
+├── README.md                   ← Este archivo
+├── employees-service/          ← Reto 1 & 2
+│   ├── Dockerfile
+│   ├── src/
+│   │   ├── employees/          ← Módulo de empleados
+│   │   └── resilience/         ← Circuit breaker
+│   └── README.md
+└── departments-service/        ← Reto 2
+    ├── Dockerfile
+    ├── src/
+    │   └── departments/        ← Módulo de departamentos
+    └── README.md
+```
+
+## 🔄 Patrones de Resiliencia (employees-service)
+
+El `employees-service` implementa los siguientes patrones al comunicarse con `departments-service`:
+
+- **Timeout**: Las peticiones HTTP tienen un límite de 5 segundos
+- **Retry con backoff exponencial**: Hasta 3 reintentos (500ms, 1000ms, 1500ms) en errores de red o 5xx
+- **Circuit Breaker**: Se abre tras 3 fallos consecutivos, rechaza peticiones por 15s (fail-fast), y entra en HALF_OPEN para probar recuperación
