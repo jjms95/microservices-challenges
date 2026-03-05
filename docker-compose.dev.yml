@@ -1,14 +1,3 @@
-# docker-compose.dev.yml
-#
-# Override de desarrollo. Extiende docker-compose.yml:
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --watch
-#
-# Diferencias respecto al modo producción:
-#  - Usa Dockerfile.dev (con devDependencies + npm start:dev)
-#  - Sincroniza src/ al contenedor en tiempo real sin reconstruir (docker compose watch)
-#  - Solo reconstruye la imagen si cambia package.json
-#  - Las bases de datos se heredan tal cual de docker-compose.yml
-
 services:
   departments-service:
     build:
@@ -18,11 +7,9 @@ services:
       NODE_ENV: development
     develop:
       watch:
-        # Sync: copia cambios de src/ al contenedor → el watcher de NestJS recarga solo
         - action: sync
           path: ./departments-service/src
           target: /app/src
-        # Rebuild: solo si cambian dependencias
         - action: rebuild
           path: ./departments-service/package.json
 
