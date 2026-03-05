@@ -5,14 +5,13 @@ import { EmployeesController } from './employees.controller';
 import { EmployeesService } from './employees.service';
 import { Employee } from './entities/employee.entity';
 import { CircuitBreakerService } from '../resilience/circuit-breaker.service';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Employee]),
-        HttpModule.register({
-            timeout: 5000,       // 5 seconds request timeout
-            maxRedirects: 3,
-        }),
+        HttpModule.register({ timeout: 5000, maxRedirects: 3 }),
+        MessagingModule,
     ],
     controllers: [EmployeesController],
     providers: [EmployeesService, CircuitBreakerService],

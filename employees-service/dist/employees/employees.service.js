@@ -21,17 +21,20 @@ const axios_1 = require("@nestjs/axios");
 const rxjs_1 = require("rxjs");
 const employee_entity_1 = require("./entities/employee.entity");
 const circuit_breaker_service_1 = require("../resilience/circuit-breaker.service");
+const events_publisher_service_1 = require("../messaging/events-publisher.service");
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 500;
 let EmployeesService = EmployeesService_1 = class EmployeesService {
     employeesRepository;
     httpService;
     circuitBreaker;
+    eventsPublisher;
     logger = new common_1.Logger(EmployeesService_1.name);
-    constructor(employeesRepository, httpService, circuitBreaker) {
+    constructor(employeesRepository, httpService, circuitBreaker, eventsPublisher) {
         this.employeesRepository = employeesRepository;
         this.httpService = httpService;
         this.circuitBreaker = circuitBreaker;
+        this.eventsPublisher = eventsPublisher;
     }
     async create(createEmployeeDto) {
         const departmentsServiceUrl = process.env.DEPARTMENTS_SERVICE_URL || 'http://localhost:8081';
@@ -48,8 +51,7 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
                         return (0, rxjs_1.throwError)(() => error);
                     }
                     const delayMs = retryCount * RETRY_DELAY_MS;
-                    this.logger.warn(`[CircuitBreaker: ${this.circuitBreaker.getState()}] ` +
-                        `Retry ${retryCount}/${MAX_RETRIES} for departments-service in ${delayMs}ms...`);
+                    this.logger.warn(`[CircuitBreaker: ${this.circuitBreaker.getState()}] Retry ${retryCount}/${MAX_RETRIES} for departments-service in ${delayMs}ms...`);
                     return (0, rxjs_1.timer)(delayMs);
                 },
                 resetOnSuccess: true,
@@ -63,12 +65,19 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             }
             this.circuitBreaker.onFailure();
             this.logger.error(`Failed to reach departments-service after ${MAX_RETRIES} retries. ` +
-                `Circuit breaker state: ${this.circuitBreaker.getState()}. ` +
-                `Error: ${axiosError.message}`);
+                `Circuit breaker: ${this.circuitBreaker.getState()}. Error: ${axiosError.message}`);
             throw new common_1.ServiceUnavailableException('Could not communicate with departments-service. The service may be temporarily unavailable.');
         }
         const employee = this.employeesRepository.create(createEmployeeDto);
-        return this.employeesRepository.save(employee);
+        const saved = await this.employeesRepository.save(employee);
+        this.eventsPublisher.publishEmployeeCreated({
+            id: saved.id,
+            name: saved.name,
+            email: saved.email,
+            departmentId: saved.departmentId,
+            hireDate: saved.hireDate,
+        });
+        return saved;
     }
     async findAll(query) {
         const { name, email, page = 1, limit = 10 } = query;
@@ -103,6 +112,16 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
         }
         return employee;
     }
+    async remove(id) {
+        const employee = await this.findOne(id);
+        await this.employeesRepository.remove(employee);
+        this.logger.log(`Employee ${id} deleted from database.`);
+        this.eventsPublisher.publishEmployeeDeleted({
+            id,
+            name: employee.name,
+            email: employee.email,
+        });
+    }
 };
 exports.EmployeesService = EmployeesService;
 exports.EmployeesService = EmployeesService = EmployeesService_1 = __decorate([
@@ -110,6 +129,7 @@ exports.EmployeesService = EmployeesService = EmployeesService_1 = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(employee_entity_1.Employee)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         axios_1.HttpService,
-        circuit_breaker_service_1.CircuitBreakerService])
+        circuit_breaker_service_1.CircuitBreakerService,
+        events_publisher_service_1.EventsPublisherService])
 ], EmployeesService);
 //# sourceMappingURL=employees.service.js.map

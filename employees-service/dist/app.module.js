@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const employees_module_1 = require("./employees/employees.module");
+const messaging_module_1 = require("./messaging/messaging.module");
 const employee_entity_1 = require("./employees/entities/employee.entity");
 let AppModule = class AppModule {
 };
@@ -33,6 +34,7 @@ exports.AppModule = AppModule = __decorate([
                     synchronize: true,
                 }),
             }),
+            messaging_module_1.MessagingModule,
             employees_module_1.EmployeesModule,
         ],
     })

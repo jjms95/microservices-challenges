@@ -1,5 +1,26 @@
 services:
   # ─────────────────────────────────────────────
+  #  Message Broker
+  # ─────────────────────────────────────────────
+  message-broker:
+    image: rabbitmq:3-management
+    container_name: message-broker
+    restart: unless-stopped
+    ports:
+      - "5672:5672" # AMQP protocol port
+      - "15672:15672" # Management UI  →  http://localhost:15672  (admin/admin)
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─────────────────────────────────────────────
   #  Databases
   # ─────────────────────────────────────────────
   database-employees:
@@ -42,8 +63,48 @@ services:
       timeout: 5s
       retries: 5
 
+  database-notifications:
+    image: postgres:16-alpine
+    container_name: database-notifications
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notifications_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - notifications_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d notifications_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  database-profiles:
+    image: postgres:16-alpine
+    container_name: database-profiles
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: profiles_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - profiles_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d profiles_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─────────────────────────────────────────────
-  #  Microservices
+  #  Microservices — Reto 2
   # ─────────────────────────────────────────────
   departments-service:
     build:
@@ -80,11 +141,63 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: employees_db
       DEPARTMENTS_SERVICE_URL: http://departments-service:8081
+      RABBITMQ_URL: amqp://admin:admin@message-broker:5672
     depends_on:
       database-employees:
         condition: service_healthy
       departments-service:
         condition: service_started
+      message-broker:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+  # ─────────────────────────────────────────────
+  #  Microservices — Reto 3 (new)
+  # ─────────────────────────────────────────────
+  notifications-service:
+    build:
+      context: ./notifications-service
+      dockerfile: Dockerfile
+    container_name: notifications-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: database-notifications
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: notifications_db
+      RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+    depends_on:
+      database-notifications:
+        condition: service_healthy
+      message-broker:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+  profiles-service:
+    build:
+      context: ./profiles-service
+      dockerfile: Dockerfile
+    container_name: profiles-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: database-profiles
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: profiles_db
+      RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+    depends_on:
+      database-profiles:
+        condition: service_healthy
+      message-broker:
+        condition: service_healthy
     networks:
       - microservices-network
 
@@ -94,6 +207,8 @@ services:
 volumes:
   employees_data:
   departments_data:
+  notifications_data:
+  profiles_data:
 
 
 networks:

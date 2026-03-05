@@ -9,4 +9,5 @@ export declare class EmployeesController {
     create(createEmployeeDto: CreateEmployeeDto): Promise<Employee>;
     findAll(query: FindEmployeesQueryDto): Promise<PaginatedEmployeesDto>;
     findOne(id: string): Promise<Employee>;
+    remove(id: string): Promise<void>;
 }

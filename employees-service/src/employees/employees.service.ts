@@ -15,9 +15,10 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { FindEmployeesQueryDto } from './dto/find-employees-query.dto';
 import { PaginatedEmployeesDto } from './dto/paginated-employees.dto';
 import { CircuitBreakerService } from '../resilience/circuit-breaker.service';
+import { EventsPublisherService } from '../messaging/events-publisher.service';
 
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 500; // base delay; multiplied by retry count (exponential backoff)
+const RETRY_DELAY_MS = 500;
 
 @Injectable()
 export class EmployeesService {
@@ -28,20 +29,21 @@ export class EmployeesService {
         private readonly employeesRepository: Repository<Employee>,
         private readonly httpService: HttpService,
         private readonly circuitBreaker: CircuitBreakerService,
+        private readonly eventsPublisher: EventsPublisherService,
     ) { }
 
     async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
         const departmentsServiceUrl =
             process.env.DEPARTMENTS_SERVICE_URL || 'http://localhost:8081';
 
-        // ── Circuit Breaker: fast-fail if the service is known to be down ──────
+        // ── Circuit Breaker: fast-fail if departments-service is known down ───
         if (!this.circuitBreaker.isAvailable()) {
             throw new ServiceUnavailableException(
                 'Departments service is currently unavailable (circuit breaker OPEN). Please try again later.',
             );
         }
 
-        // ── HTTP call with retry + error differentiation ──────────────────────
+        // ── Validate department exists via HTTP REST (with retry) ─────────────
         try {
             await firstValueFrom(
                 this.httpService
@@ -50,15 +52,12 @@ export class EmployeesService {
                         retry({
                             count: MAX_RETRIES,
                             delay: (error: AxiosError, retryCount: number) => {
-                                // Do NOT retry on 404 – department simply doesn't exist
                                 if (error.response?.status === 404) {
                                     return throwError(() => error);
                                 }
-                                // Retry on network errors, timeouts or 5xx responses
                                 const delayMs = retryCount * RETRY_DELAY_MS;
                                 this.logger.warn(
-                                    `[CircuitBreaker: ${this.circuitBreaker.getState()}] ` +
-                                    `Retry ${retryCount}/${MAX_RETRIES} for departments-service in ${delayMs}ms...`,
+                                    `[CircuitBreaker: ${this.circuitBreaker.getState()}] Retry ${retryCount}/${MAX_RETRIES} for departments-service in ${delayMs}ms...`,
                                 );
                                 return timer(delayMs);
                             },
@@ -66,40 +65,44 @@ export class EmployeesService {
                         }),
                     ),
             );
-
-            // ── Success: reset circuit breaker failure count ──────────────────
             this.circuitBreaker.onSuccess();
         } catch (error) {
             const axiosError = error as AxiosError;
-
             if (axiosError.response?.status === 404) {
-                // The service responded but the department does not exist → 400
                 throw new BadRequestException(
                     `Department with id "${createEmployeeDto.departmentId}" does not exist.`,
                 );
             }
-
-            // Connectivity failure, timeout, or 5xx after all retries exhausted → 503
             this.circuitBreaker.onFailure();
             this.logger.error(
                 `Failed to reach departments-service after ${MAX_RETRIES} retries. ` +
-                `Circuit breaker state: ${this.circuitBreaker.getState()}. ` +
-                `Error: ${axiosError.message}`,
+                `Circuit breaker: ${this.circuitBreaker.getState()}. Error: ${axiosError.message}`,
             );
             throw new ServiceUnavailableException(
                 'Could not communicate with departments-service. The service may be temporarily unavailable.',
             );
         }
 
+        // ── Persist employee ──────────────────────────────────────────────────
         const employee = this.employeesRepository.create(createEmployeeDto);
-        return this.employeesRepository.save(employee);
+        const saved = await this.employeesRepository.save(employee);
+
+        // ── Publish event AFTER successful DB save (fire-and-forget) ─────────
+        this.eventsPublisher.publishEmployeeCreated({
+            id: saved.id,
+            name: saved.name,
+            email: saved.email,
+            departmentId: saved.departmentId,
+            hireDate: saved.hireDate,
+        });
+
+        return saved;
     }
 
     async findAll(query: FindEmployeesQueryDto): Promise<PaginatedEmployeesDto> {
         const { name, email, page = 1, limit = 10 } = query;
 
         const where: Record<string, unknown>[] = [];
-
         if (name && email) {
             where.push({ name: ILike(`%${name}%`), email: ILike(`%${email}%`) });
         } else if (name) {
@@ -130,5 +133,20 @@ export class EmployeesService {
             throw new NotFoundException(`Employee with id "${id}" not found.`);
         }
         return employee;
+    }
+
+    async remove(id: string): Promise<void> {
+        const employee = await this.findOne(id); // throws 404 if not found
+
+        // ── Delete from DB ────────────────────────────────────────────────────
+        await this.employeesRepository.remove(employee);
+        this.logger.log(`Employee ${id} deleted from database.`);
+
+        // ── Publish event AFTER successful deletion (fire-and-forget) ─────────
+        this.eventsPublisher.publishEmployeeDeleted({
+            id,
+            name: employee.name,
+            email: employee.email,
+        });
     }
 }

@@ -14,6 +14,7 @@ const employees_controller_1 = require("./employees.controller");
 const employees_service_1 = require("./employees.service");
 const employee_entity_1 = require("./entities/employee.entity");
 const circuit_breaker_service_1 = require("../resilience/circuit-breaker.service");
+const messaging_module_1 = require("../messaging/messaging.module");
 let EmployeesModule = class EmployeesModule {
 };
 exports.EmployeesModule = EmployeesModule;
@@ -21,10 +22,8 @@ exports.EmployeesModule = EmployeesModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([employee_entity_1.Employee]),
-            axios_1.HttpModule.register({
-                timeout: 5000,
-                maxRedirects: 3,
-            }),
+            axios_1.HttpModule.register({ timeout: 5000, maxRedirects: 3 }),
+            messaging_module_1.MessagingModule,
         ],
         controllers: [employees_controller_1.EmployeesController],
         providers: [employees_service_1.EmployeesService, circuit_breaker_service_1.CircuitBreakerService],

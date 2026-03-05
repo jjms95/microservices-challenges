@@ -35,13 +35,17 @@ let EmployeesController = class EmployeesController {
     findOne(id) {
         return this.employeesService.findOne(id);
     }
+    remove(id) {
+        return this.employeesService.remove(id);
+    }
 };
 exports.EmployeesController = EmployeesController;
 __decorate([
     (0, common_1.Post)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Create a new employee', description: 'Validates department existence before saving' }),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'Employee created successfully.', type: employee_entity_1.Employee }),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new employee', description: 'Validates department via REST, saves employee, then publishes employee.created event to RabbitMQ.' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Employee created. Event employee.created published.', type: employee_entity_1.Employee }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid input or department not found.' }),
+    (0, swagger_1.ApiResponse)({ status: 503, description: 'departments-service unreachable (circuit breaker or timeout).' }),
     openapi.ApiResponse({ status: 201, type: require("./entities/employee.entity").Employee }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -54,15 +58,11 @@ __decorate([
         summary: 'List all employees',
         description: 'Returns a paginated list of employees. Optionally filter by name and/or email (partial, case-insensitive).',
     }),
-    (0, swagger_1.ApiQuery)({ name: 'name', required: false, type: String, description: 'Filter by employee name (partial, case-insensitive)', example: 'John' }),
-    (0, swagger_1.ApiQuery)({ name: 'email', required: false, type: String, description: 'Filter by employee email (partial, case-insensitive)', example: 'john@company.com' }),
+    (0, swagger_1.ApiQuery)({ name: 'name', required: false, type: String, description: 'Filter by name (partial, case-insensitive)', example: 'John' }),
+    (0, swagger_1.ApiQuery)({ name: 'email', required: false, type: String, description: 'Filter by email (partial, case-insensitive)', example: 'john@company.com' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number, description: 'Page number (starts at 1)', example: 1 }),
-    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, description: 'Number of items per page', example: 10 }),
-    (0, swagger_1.ApiResponse)({
-        status: 200,
-        description: 'Paginated list of employees with metadata.',
-        type: paginated_employees_dto_1.PaginatedEmployeesDto,
-    }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, description: 'Items per page', example: 10 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Paginated list of employees.', type: paginated_employees_dto_1.PaginatedEmployeesDto }),
     openapi.ApiResponse({ status: 200, type: require("./dto/paginated-employees.dto").PaginatedEmployeesDto }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
@@ -81,6 +81,22 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Delete an employee by UUID',
+        description: 'Deletes the employee from the database and publishes employee.deleted event to RabbitMQ.',
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Employee UUID', type: 'string' }),
+    (0, swagger_1.ApiResponse)({ status: 204, description: 'Employee deleted. Event employee.deleted published.' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Employee not found.' }),
+    openapi.ApiResponse({ status: common_1.HttpStatus.NO_CONTENT }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], EmployeesController.prototype, "remove", null);
 exports.EmployeesController = EmployeesController = __decorate([
     (0, swagger_1.ApiTags)('employees'),
     (0, common_1.Controller)('employees'),

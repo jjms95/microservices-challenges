@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmployeesModule } from './employees/employees.module';
+import { MessagingModule } from './messaging/messaging.module';
 import { Employee } from './employees/entities/employee.entity';
 
 @Module({
@@ -18,9 +19,10 @@ import { Employee } from './employees/entities/employee.entity';
         password: config.get<string>('DB_PASSWORD', 'postgres'),
         database: config.get<string>('DB_NAME', 'employees_db'),
         entities: [Employee],
-        synchronize: true, // Only for development - auto-migrates schema
+        synchronize: true,
       }),
     }),
+    MessagingModule,
     EmployeesModule,
   ],
 })
