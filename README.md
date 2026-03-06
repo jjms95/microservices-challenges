@@ -163,8 +163,7 @@ cd microservices-challenges
 ### 2. Levantar todos los servicios con un solo comando
 
 ```bash
-make prod
-# equivalente a: docker compose up --build
+docker compose up --build
 ```
 
 Esto levanta **9 contenedores** en el orden correcto:
