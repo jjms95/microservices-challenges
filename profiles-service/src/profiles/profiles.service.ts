@@ -12,6 +12,10 @@ export interface EmployeeCreatedPayload {
     hireDate: Date;
 }
 
+export interface EmployeeDeletedPayload {
+    id: string;
+}
+
 @Injectable()
 export class ProfilesService {
     private readonly logger = new Logger(ProfilesService.name);
@@ -41,6 +45,21 @@ export class ProfilesService {
 
         await this.profilesRepository.save(profile);
         this.logger.log(`Default profile created for employee: ${payload.id} (${payload.name})`);
+    }
+
+    async handleEmployeeDeleted(employeeId: string): Promise<void> {
+        // Idempotency: don't create duplicate profiles
+        const existing = await this.profilesRepository.findOne({
+            where: { employeeId: employeeId },
+        });
+
+        if (!existing) {
+            this.logger.warn(`Profile for employee ${employeeId} not found. Skipping deletion.`);
+            return;
+        }
+
+        await this.profilesRepository.remove(existing);
+        this.logger.log(`Profile for employee ${employeeId} has been deleted.`);
     }
 
     findAll(): Promise<Profile[]> {

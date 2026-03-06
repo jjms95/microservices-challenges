@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload, Ctx, RmqContext } from '@nestjs/microservices';
 import { ProfilesService } from './profiles.service';
-import type { EmployeeCreatedPayload } from './profiles.service';
+import type { EmployeeCreatedPayload, EmployeeDeletedPayload } from './profiles.service';
 
 @Controller()
 export class ProfilesConsumer {
@@ -29,13 +29,18 @@ export class ProfilesConsumer {
 
     @EventPattern('employee.deleted')
     async handleEmployeeDeleted(
-        @Payload() _data: unknown,
+        @Payload() data: EmployeeDeletedPayload,
         @Ctx() context: RmqContext,
     ): Promise<void> {
-        // profiles-service does not act on employee deletion
-        // Acknowledge to prevent message from being requeued
         const channel = context.getChannelRef();
         const originalMsg = context.getMessage();
-        channel.ack(originalMsg);
+        try {
+            this.logger.log(`[EVENT RECEIVED] employee.deleted | id: ${data.id}`);
+            await this.profilesService.handleEmployeeDeleted(data.id);
+            channel.ack(originalMsg);
+        } catch (error) {
+            this.logger.error(`Error handling employee.deleted: ${(error as Error).message}`);
+            channel.nack(originalMsg, false, false);
+        }
     }
 }
