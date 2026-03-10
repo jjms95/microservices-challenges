@@ -8,7 +8,7 @@ import { Notification } from './entities/notification.entity';
 export class NotificationsController {
     constructor(private readonly notificationsService: NotificationsService) { }
 
-    @Get()
+    /* @Get()
     @ApiOperation({
         summary: 'List all notifications',
         description: 'Returns all notifications recorded by the service, ordered by most recent first.',
@@ -24,5 +24,5 @@ export class NotificationsController {
     @ApiResponse({ status: 200, description: 'Notifications for the given employee.', type: [Notification] })
     findByEmployeeId(@Param('employeeId') employeeId: string): Promise<Notification[]> {
         return this.notificationsService.findByEmployeeId(employeeId);
-    }
+    } */
 }
