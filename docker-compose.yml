@@ -103,6 +103,26 @@ services:
       timeout: 5s
       retries: 5
 
+  database-auth:
+    image: postgres:16-alpine
+    container_name: database-auth
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d auth_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─────────────────────────────────────────────
   #  Microservices
   # ─────────────────────────────────────────────
@@ -120,6 +140,7 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: departments_db
+      JWT_SECRET: supersecret2026
     depends_on:
       database-departments:
         condition: service_healthy
@@ -142,6 +163,7 @@ services:
       DB_NAME: employees_db
       DEPARTMENTS_SERVICE_URL: http://departments-service:8081
       RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+      JWT_SECRET: supersecret2026
     depends_on:
       database-employees:
         condition: service_healthy
@@ -167,6 +189,7 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: notifications_db
       RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+      JWT_SECRET: supersecret2026
     depends_on:
       database-notifications:
         condition: service_healthy
@@ -190,8 +213,33 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: profiles_db
       RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+      JWT_SECRET: supersecret2026
     depends_on:
       database-profiles:
+        condition: service_healthy
+      message-broker:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: database-auth
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: auth_db
+      RABBITMQ_URL: amqp://admin:admin@message-broker:5672
+      JWT_SECRET: supersecret2026
+    depends_on:
+      database-auth:
         condition: service_healthy
       message-broker:
         condition: service_healthy
@@ -206,6 +254,7 @@ volumes:
   departments_data:
   notifications_data:
   profiles_data:
+  auth_data:
 
 
 networks:

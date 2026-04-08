@@ -2,10 +2,10 @@
 
 > Sistema de onboarding y offboarding de empleados construido con microservicios NestJS, TypeORM, PostgreSQL, RabbitMQ y Docker Compose.
 
-## 📐 Arquitectura del Sistema (Reto 3)
+## 📐 Arquitectura del Sistema (Reto 4)
 
 ```
-🌐 Cliente HTTP (curl / Postman / Bruno)
+🌐 Cliente HTTP (Requests con token JWT Bearer)
         │
         ├──────────────────────────────────────────────────────┐
         │                                                      │
@@ -21,18 +21,28 @@
         │                     ▼
         │          📨 RabbitMQ (fanout exchange)
         │             employees_exchange :5672
-        │             Management UI      :15672
         │                  │
-        │         ┌────────┴────────┐
-        │         ▼                 ▼
-        │  📋 profiles-service    📧 notifications-service
-        │     :8083                  :8084
-        │     Consume:               Consume:
-        │     employee.created       employee.created
-        │                            employee.deleted
-        ▼         ▼                 ▼
-🗄 db-employees  🗄 db-departments  🗄 db-profiles  🗄 db-notifications
-   :5432            :5433              :5435            :5434
+        │         ┌────────┴───────────────┐
+        │         ▼                        ▼
+        │  📋 profiles-service      🔐 auth-service :8085
+        │     :8083                 Consume: employee.created
+        │                                    employee.deleted
+        │                           Publica: user.created
+        │                                    user.recovered
+        │                                  │
+        │                                  ▼ (a RabbitMQ)
+        │                                  │
+        │         ┌────────────────────────┤
+        │         ▼                        
+        │  📧 notifications-service        
+        │     :8084                        
+        │     Consume: user.created        
+        │              user.recovered      
+        │              employee.created    
+        │              employee.deleted    
+        ▼         ▼                 ▼                 ▼
+🗄 db-employees  🗄 db-departments  🗄 db-profiles  🗄 db-auth & db-notifications
+   :5432            :5433              :5435            :5436 & :5434
 ```
 
 ---
@@ -46,6 +56,7 @@
 | ORM | TypeORM |
 | Base de datos | PostgreSQL 16 |
 | Message Broker | **RabbitMQ 3** (AMQP) |
+| Seguridad | Passport, JSON Web Tokens (JWT), BCrypt, RBAC |
 | Contenedores | Docker + Docker Compose |
 | Documentación API | Swagger (`@nestjs/swagger`) |
 
@@ -74,11 +85,12 @@ Se evaluaron cuatro opciones antes de seleccionar RabbitMQ:
 
 | Servicio | Puerto | Swagger | Rol | Reto |
 |---|---|---|---|---|
-| `employees-service` | `:8080` | [/api](http://localhost:8080/api) | Publisher de eventos + CRUD | R1, R2, R3 |
-| `departments-service` | `:8081` | [/api](http://localhost:8081/api) | CRUD departamentos | R2 |
-| `profiles-service` | `:8083` | [/api](http://localhost:8083/api) | Consumer async + REST | R3 |
-| `notifications-service` | `:8084` | [/api](http://localhost:8084/api) | Consumer puramente reactivo | R3 |
-| `message-broker` (RabbitMQ) | `:5672` / `:15672` | — | Fan-out exchange | R3 |
+| `auth-service` | `:8085` | [/api/docs](http://localhost:8085/api/docs) | Identity Provider + Generación JWT | R4 |
+| `employees-service` | `:8080` | [/api](http://localhost:8080/api) | Publisher de eventos + CRUD (Protegido JWT) | R1, R2, R3, R4 |
+| `departments-service` | `:8081` | [/api](http://localhost:8081/api) | CRUD departamentos (Protegido JWT) | R2, R4 |
+| `profiles-service` | `:8083` | [/api](http://localhost:8083/api) | Consumer async + REST (Protegido JWT) | R3, R4 |
+| `notifications-service` | `:8084` | [/api](http://localhost:8084/api) | Consumer puramente reactivo (Protegido JWT)| R3, R4 |
+| `message-broker` (RabbitMQ) | `:5672` / `:15672` | — | Fan-out exchange | R3, R4 |
 
 ---
 
@@ -144,6 +156,14 @@ Se evaluaron cuatro opciones antes de seleccionar RabbitMQ:
 
 ---
 
+### Eventos de Seguridad (`auth-service`)
+
+#### `user.created` & `user.recovered`
+
+Generados por `auth-service` para delegar el envío de correos sobre tokens de restablecimiento de contraseñas de forma asíncrona a `notifications-service`. Adicionalmente, incluye el token de recuperación (stateless).
+
+---
+
 ## 📦 Prerrequisitos
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo
@@ -166,13 +186,14 @@ cd microservices-challenges
 docker compose up --build
 ```
 
-Esto levanta **9 contenedores** en el orden correcto:
+Esto levanta **10 contenedores** en el orden correcto:
 1. `message-broker` (RabbitMQ)
-2. 4 bases de datos PostgreSQL (esperan healthcheck)
+2. 5 bases de datos PostgreSQL (esperan healthcheck)
 3. `departments-service`
 4. `employees-service` (espera broker + departments)
 5. `notifications-service` (espera broker)
 6. `profiles-service` (espera broker)
+7. `auth-service` (espera broker)
 
 ### 3. Verificar que todos los servicios están corriendo
 
@@ -185,6 +206,7 @@ docker compose ps
 | Interfaz | URL | Credenciales |
 |---|---|---|
 | RabbitMQ Management UI | http://localhost:15672 | admin / admin |
+| Swagger auth-service | http://localhost:8085/api/docs | — |
 | Swagger employees-service | http://localhost:8080/api | — |
 | Swagger departments-service | http://localhost:8081/api | — |
 | Swagger profiles-service | http://localhost:8083/api | — |
@@ -336,32 +358,41 @@ make help           # Ver todos los comandos disponibles
 
 ```
 microservices-challenges/
-├── docker-compose.yml            ← Orquestación completa (9 contenedores)
+├── docker-compose.yml            ← Orquestación completa (10 contenedores)
 ├── docker-compose.dev.yml        ← Override para desarrollo con hot-reload
 ├── Makefile                      ← Comandos convenientes
 ├── README.md                     ← Este archivo
-├── employees-service/            ← Reto 1, 2 y 3 (publisher)
+├── auth-service/                 ← Reto 4 (Identity Provider & Security)
+│   ├── Dockerfile
+│   └── src/auth/
+│       ├── auth.controller.ts    ← POST /auth/login /recover /reset
+│       ├── users.consumer.ts     ← @EventPattern('employee.created')
+│       └── strategies/jwt.strategy.ts
+├── employees-service/            ← Reto 1, 2, 3 y 4
 │   ├── Dockerfile
 │   ├── Dockerfile.dev
 │   └── src/
+│       ├── security/             ← Guards de Autenticación y Autorización (JWT)
 │       ├── employees/            ← CRUD + DELETE + event publishing
 │       ├── messaging/            ← MessagingModule + EventsPublisherService
 │       └── resilience/           ← Circuit Breaker
-├── departments-service/          ← Reto 2
+├── departments-service/          ← Reto 2 y 4
 │   ├── Dockerfile
 │   └── src/departments/
-├── profiles-service/             ← Reto 3 (consumer + REST)
+├── profiles-service/             ← Reto 3 y 4
 │   ├── Dockerfile
 │   └── src/profiles/
-│       ├── profiles.consumer.ts  ← @EventPattern('employee.created')
-│       ├── profiles.controller.ts← GET/PUT /profiles
+│       ├── profiles.consumer.ts  
+│       ├── profiles.controller.ts
 │       └── profiles.service.ts
-└── notifications-service/        ← Reto 3 (puramente reactivo)
+└── notifications-service/        ← Reto 3 y 4
     ├── Dockerfile
-    └── src/notifications/
-        ├── notifications.consumer.ts  ← @EventPattern handlers
-        ├── notifications.controller.ts← GET /notifications
-        └── notifications.service.ts
+    └── src/
+        ├── security/
+        └── notifications/
+            ├── notifications.consumer.ts  ← @EventPattern('user.created')
+            ├── notifications.controller.ts
+            └── notifications.service.ts
 ```
 
 ---

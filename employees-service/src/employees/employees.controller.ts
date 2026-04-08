@@ -5,13 +5,21 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { FindEmployeesQueryDto } from './dto/find-employees-query.dto';
 import { PaginatedEmployeesDto } from './dto/paginated-employees.dto';
 import { Employee } from './entities/employee.entity';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../security/jwt-auth.guard';
+import { RolesGuard } from '../security/roles.guard';
+import { Roles } from '../security/roles.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('employees')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees')
 export class EmployeesController {
     constructor(private readonly employeesService: EmployeesService) { }
 
     @Post()
+    @Roles('ADMIN')
     @ApiOperation({ summary: 'Create a new employee', description: 'Validates department via REST, saves employee, then publishes employee.created event to RabbitMQ.' })
     @ApiResponse({ status: 201, description: 'Employee created. Event employee.created published.', type: Employee })
     @ApiResponse({ status: 400, description: 'Invalid input or department not found.' })
@@ -21,6 +29,7 @@ export class EmployeesController {
     }
 
     @Get()
+    @Roles('USER', 'ADMIN')
     @ApiOperation({
         summary: 'List all employees',
         description: 'Returns a paginated list of employees. Optionally filter by name and/or email (partial, case-insensitive).',
@@ -35,6 +44,7 @@ export class EmployeesController {
     }
 
     @Get(':id')
+    @Roles('USER', 'ADMIN')
     @ApiOperation({ summary: 'Get an employee by UUID' })
     @ApiParam({ name: 'id', description: 'Employee UUID', type: 'string' })
     @ApiResponse({ status: 200, description: 'Employee found.', type: Employee })
@@ -44,6 +54,7 @@ export class EmployeesController {
     }
 
     @Delete(':id')
+    @Roles('ADMIN')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({
         summary: 'Delete an employee by UUID',

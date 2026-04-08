@@ -6,13 +6,21 @@ import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { FindDepartmentsQueryDto } from './dto/find-departments-query.dto';
 import { PaginatedDepartmentsDto } from './dto/paginated-departments.dto';
 import { Department } from './entities/department.entity';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../security/jwt-auth.guard';
+import { RolesGuard } from '../security/roles.guard';
+import { Roles } from '../security/roles.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('departments')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('departments')
 export class DepartmentsController {
     constructor(private readonly departmentsService: DepartmentsService) { }
 
     @Post()
+    @Roles('ADMIN')
     @ApiOperation({ summary: 'Create a new department' })
     @ApiResponse({ status: 201, description: 'Department created successfully.', type: Department })
     @ApiResponse({ status: 400, description: 'Invalid input data.' })
@@ -21,6 +29,7 @@ export class DepartmentsController {
     }
 
     @Get()
+    @Roles('USER', 'ADMIN')
     @ApiOperation({
         summary: 'List all departments',
         description: 'Returns a paginated list of departments. Optionally filter by name (partial, case-insensitive).',
@@ -34,6 +43,7 @@ export class DepartmentsController {
     }
 
     @Get(':id')
+    @Roles('USER', 'ADMIN')
     @ApiOperation({ summary: 'Get a department by UUID' })
     @ApiParam({ name: 'id', description: 'Department UUID', type: 'string' })
     @ApiResponse({ status: 200, description: 'Department found.', type: Department })
@@ -43,6 +53,7 @@ export class DepartmentsController {
     }
 
     @Put(':id')
+    @Roles('ADMIN')
     @ApiOperation({ summary: 'Update a department by UUID' })
     @ApiParam({ name: 'id', description: 'Department UUID', type: 'string' })
     @ApiResponse({ status: 200, description: 'Department updated.', type: Department })
@@ -55,6 +66,7 @@ export class DepartmentsController {
     }
 
     @Delete(':id')
+    @Roles('ADMIN')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a department by UUID' })
     @ApiParam({ name: 'id', description: 'Department UUID', type: 'string' })

@@ -45,4 +45,36 @@ export class NotificationsConsumer {
             channel.nack(originalMsg, false, false);
         }
     }
+
+    @EventPattern('user.created')
+    async handleUserCreated(
+        @Payload() data: { email: string; token: string },
+        @Ctx() context: RmqContext,
+    ): Promise<void> {
+        const channel = context.getChannelRef();
+        const originalMsg = context.getMessage();
+        try {
+            this.logger.log(`[NOTIFICACIÓN] Tipo: SEGURIDAD | Para: ${data.email} | Mensaje: Para establecer o recuperar su contraseña, utilice este enlace: https://app.empresa.com/reset?token=${data.token}`);
+            channel.ack(originalMsg);
+        } catch (error) {
+            this.logger.error(`Error handling user.created: ${(error as Error).message}`);
+            channel.nack(originalMsg, false, false);
+        }
+    }
+
+    @EventPattern('user.recovered')
+    async handleUserRecovered(
+        @Payload() data: { email: string; token: string },
+        @Ctx() context: RmqContext,
+    ): Promise<void> {
+        const channel = context.getChannelRef();
+        const originalMsg = context.getMessage();
+        try {
+            this.logger.log(`[NOTIFICACIÓN] Tipo: SEGURIDAD | Para: ${data.email} | Mensaje: Para establecer o recuperar su contraseña, utilice este enlace: https://app.empresa.com/reset?token=${data.token}`);
+            channel.ack(originalMsg);
+        } catch (error) {
+            this.logger.error(`Error handling user.recovered: ${(error as Error).message}`);
+            channel.nack(originalMsg, false, false);
+        }
+    }
 }
