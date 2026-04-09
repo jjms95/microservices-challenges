@@ -32,7 +32,7 @@ export class EmployeesService {
         private readonly eventsPublisher: EventsPublisherService,
     ) { }
 
-    async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
+    async create(createEmployeeDto: CreateEmployeeDto, token?: string): Promise<Employee> {
         const departmentsServiceUrl =
             process.env.DEPARTMENTS_SERVICE_URL || 'http://localhost:8081';
 
@@ -47,7 +47,11 @@ export class EmployeesService {
         try {
             await firstValueFrom(
                 this.httpService
-                    .get(`${departmentsServiceUrl}/departments/${createEmployeeDto.departmentId}`)
+                    .get(`${departmentsServiceUrl}/departments/${createEmployeeDto.departmentId}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    })
                     .pipe(
                         retry({
                             count: MAX_RETRIES,

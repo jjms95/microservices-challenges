@@ -85,7 +85,7 @@ Se evaluaron cuatro opciones antes de seleccionar RabbitMQ:
 
 | Servicio | Puerto | Swagger | Rol | Reto |
 |---|---|---|---|---|
-| `auth-service` | `:8085` | [/api/docs](http://localhost:8085/api/docs) | Identity Provider + Generación JWT | R4 |
+| `auth-service` | `:8085` | [/api/docs](http://localhost:8085/api) | Identity Provider + Generación JWT | R4 |
 | `employees-service` | `:8080` | [/api](http://localhost:8080/api) | Publisher de eventos + CRUD (Protegido JWT) | R1, R2, R3, R4 |
 | `departments-service` | `:8081` | [/api](http://localhost:8081/api) | CRUD departamentos (Protegido JWT) | R2, R4 |
 | `profiles-service` | `:8083` | [/api](http://localhost:8083/api) | Consumer async + REST (Protegido JWT) | R3, R4 |
@@ -161,6 +161,26 @@ Se evaluaron cuatro opciones antes de seleccionar RabbitMQ:
 #### `user.created` & `user.recovered`
 
 Generados por `auth-service` para delegar el envío de correos sobre tokens de restablecimiento de contraseñas de forma asíncrona a `notifications-service`. Adicionalmente, incluye el token de recuperación (stateless).
+
+---
+
+### Sesion de usuarios
+
+Para hacer pruebas de los servicios, se debe iniciar sesion en auth-service y obtener un token. Este token se debe incluir en el header de las peticiones a los servicios protegidos.
+
+#### Roles y permisos
+
+Existen 2 roles: 
+
+- ADMIN: Puede crear, actualizar y eliminar todos los recursos.
+- USER: Tiene acceso de solo lectura. Solo puede consultar información.
+
+#### Usuarios de prueba
+
+- ADMIN  → admin@empresa.com      / Admin123!
+- USER   → usuario@empresa.com    / User123!
+- USER   → nuevo.empleado@empresa.com (no password - needs reset)
+- USER   → exempleado@empresa.com (INACTIVE - login denied)
 
 ---
 

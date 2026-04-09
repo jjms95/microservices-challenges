@@ -14,7 +14,7 @@ export class AuthService {
     @InjectRepository(User) private usersRepository: Repository<User>,
     private jwtService: JwtService,
     @Inject('EVENT_EXCHANGE') private publisher: ClientProxy,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     await this.publisher.connect();
@@ -88,13 +88,13 @@ export class AuthService {
     let user = await this.usersRepository.findOne({ where: { email: data.email } });
     if (!user) {
       user = this.usersRepository.create({
-         email: data.email,
-         role: UserRole.USER,
-         isActive: true,
+        email: data.email,
+        role: UserRole.USER,
+        isActive: true,
       });
       await this.usersRepository.save(user);
     }
-    
+
     // Generate reset token as they have no password
     const payload = { sub: user.id, type: 'RESET_PASSWORD' };
     const resetToken = this.jwtService.sign(payload, { expiresIn: '2h' });

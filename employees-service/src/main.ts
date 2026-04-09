@@ -12,6 +12,7 @@ async function bootstrap() {
     .setTitle('Employees Service API')
     .setDescription('REST API for managing employees')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

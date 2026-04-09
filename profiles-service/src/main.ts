@@ -33,6 +33,7 @@ async function bootstrap() {
       '**REST endpoints:** query and update employee profiles.',
     )
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

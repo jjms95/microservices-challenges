@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, Req, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -24,8 +24,9 @@ export class EmployeesController {
     @ApiResponse({ status: 201, description: 'Employee created. Event employee.created published.', type: Employee })
     @ApiResponse({ status: 400, description: 'Invalid input or department not found.' })
     @ApiResponse({ status: 503, description: 'departments-service unreachable (circuit breaker or timeout).' })
-    create(@Body() createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
-        return this.employeesService.create(createEmployeeDto);
+    create(@Body() createEmployeeDto: CreateEmployeeDto, @Req() req: any): Promise<Employee> {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+        return this.employeesService.create(createEmployeeDto, token);
     }
 
     @Get()
