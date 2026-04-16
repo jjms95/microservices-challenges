@@ -2,7 +2,7 @@
 #  Makefile — Microservices Challenges
 #  Uso: make <target>
 # ─────────────────────────────────────────────────────────────────
-.PHONY: help prod dev dev-db down clean logs logs-employees logs-departments install
+.PHONY: help prod dev dev-db down clean logs logs-employees logs-departments install test test-docker install-tests
 
 # Muestra los comandos disponibles
 help:
@@ -17,13 +17,18 @@ help:
 	@echo "    make dev-db           Solo levanta las bases de datos en Docker"
 	@echo "                         → Corre los servicios localmente con 'npm run start:dev'"
 	@echo ""
+	@echo "  Pruebas BDD (Reto 5):"
+	@echo "    make install-tests    Instala dependencias del proyecto e2e-tests"
+	@echo "    make test             Ejecuta la suite BDD completa (requiere sistema levantado)"
+	@echo "    make test-docker      Ejecuta la suite BDD dentro de Docker (sin instalar nada)"
+	@echo ""
 	@echo "  Utilidades:"
 	@echo "    make down             Detiene todos los contenedores"
 	@echo "    make clean            Detiene contenedores y elimina volúmenes (reset de BD)"
 	@echo "    make logs             Muestra logs de todos los servicios (follow)"
 	@echo "    make logs-employees   Logs solo del employees-service"
 	@echo "    make logs-departments Logs solo del departments-service"
-	@echo "    make install          npm install en ambos servicios"
+	@echo "    make install          npm install en todos los microservicios"
 	@echo ""
 
 # ── Producción ─────────────────────────────────────────────────
@@ -62,3 +67,15 @@ logs-departments:
 install:
 	cd employees-service && npm install
 	cd departments-service && npm install
+
+# ── BDD Tests (Reto 5) ─────────────────────────────────────────
+install-tests:
+	cd e2e-tests && npm install
+
+# Ejecuta la suite BDD localmente (requiere Node.js y sistema levantado)
+test:
+	cd e2e-tests && npm test
+
+# Ejecuta la suite BDD dentro de Docker (sin necesidad de Node.js local)
+test-docker:
+	docker compose --profile bdd up --build bdd-tests

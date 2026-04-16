@@ -374,7 +374,9 @@ make help           # Ver todos los comandos disponibles
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📁 Estructura del Proyecto (Reto 4)
+
+> **Nota:** Para la estructura completa incluyendo el proyecto de pruebas BDD (Reto 5), ver la sección [📁 Estructura del Proyecto (Completa — Reto 5)](#-estructura-del-proyecto-completa--reto-5) al final de este documento.
 
 ```
 microservices-challenges/
@@ -425,3 +427,303 @@ microservices-challenges/
 | **Retry con backoff** | Hasta 3 reintentos (500ms, 1000ms, 1500ms) |
 | **Circuit Breaker** | Abre tras 3 fallos → 15s cooldown → HALF_OPEN |
 | **Event fire-and-forget** | Errores de publicación se loggean, nunca abortan la operación de BD |
+
+---
+
+## 🧪 Reto 5 — Automatización BDD
+
+### ¿Qué es BDD y por qué este enfoque?
+
+**Behavior-Driven Development (BDD)** es una metodología que extiende TDD enfocándose en el *comportamiento del sistema* desde la perspectiva del usuario, no en la implementación técnica.
+
+| Aspecto | Pruebas Tradicionales | BDD |
+|---|---|---|
+| Perspectiva | Técnica (funciones, clases) | Negocio (flujos, comportamiento, reglas) |
+| Lenguaje | Código de programación | Lenguaje natural estructurado (Gherkin) |
+| Audiencia | Desarrolladores | Desarrolladores, QA, stakeholders |
+| Documentación | Se desactualiza fácilmente | **Documentación viva**: si la prueba pasa, el comportamiento es real |
+
+**Fue elegido** porque los retos anteriores se verificaban manualmente con `curl`/Postman — estas verificaciones no son repetibles. Con BDD, cada flujo queda documentado como escenario ejecutable que sirve como especificación viva del sistema.
+
+---
+
+### 🛠️ Framework elegido: Cucumber.js + Axios
+
+| Herramienta | Versión | Rol | Justificación |
+|---|---|---|---|
+| **Node.js** | 20 | Runtime | Consistente con el stack del proyecto (NestJS) |
+| **Cucumber.js** (`@cucumber/cucumber`) | ^10.3 | Framework BDD | Soporte nativo de Gherkin en español (`# language: es`), `npx cucumber-js` como único comando de ejecución |
+| **Axios** | ^1.6 | Cliente HTTP | API clara para peticiones con headers JWT; `validateStatus: () => true` permite capturar cualquier código sin lanzar excepciones |
+| **dotenv** | ^16 | Variables de entorno | Configura URLs base y credenciales sin hardcodear valores |
+
+---
+
+### 📋 Prerrequisitos para ejecutar las pruebas
+
+- **Docker Desktop** instalado y corriendo
+- **Node.js 20+** instalado localmente (o usar el contenedor Docker)
+- El sistema completo levantado (`docker compose up --build -d`)
+
+---
+
+### ⚡ Instrucciones de ejecución paso a paso
+
+#### 1. Levantar el sistema
+
+```bash
+docker compose up --build -d
+# Esperar ~30s a que todos los servicios arranquen correctamente
+docker compose ps   # verificar que todos están "healthy" o "running"
+```
+
+#### 2. Configurar variables de entorno
+
+```bash
+cd e2e-tests
+cp .env.example .env
+# El archivo .env ya tiene los valores correctos para desarrollo local.
+# Modificar EMPLOYEES_URL, AUTH_URL, etc. solo si los servicios corren en otro host.
+```
+
+#### 3. Instalar dependencias
+
+```bash
+cd e2e-tests
+npm install
+```
+
+#### 4. Ejecutar la suite completa
+
+```bash
+npm test
+# Equivalente a: npx cucumber-js
+```
+
+#### 5. Ejecutar por feature individual
+
+```bash
+npm run test:humo        # Solo prueba de humo (sanity check)
+npm run test:seguridad   # Solo escenarios de seguridad/RBAC
+npm run test:onboarding  # Solo escenarios de onboarding (con polling)
+npm run test:offboarding # Solo escenarios de offboarding (con polling)
+```
+
+#### 6. (Opcional) Ejecutar en Docker sin instalar dependencias locales
+
+```bash
+docker compose --profile bdd up --build bdd-tests
+```
+
+**Desglose del comando:**
+
+| Parte | Qué hace |
+|---|---|
+| `docker compose` | El orquestador de contenedores |
+| `--profile bdd` | **Activa el perfil `bdd`** — sin esta bandera, el servicio `bdd-tests` es completamente invisible para Compose y no aparece en ningún comando (`up`, `ps`, `down`, etc.) |
+| `up --build` | Construye la imagen del contenedor y lo levanta (igual que con cualquier otro servicio) |
+| `bdd-tests` | Le indica a Compose que levante **únicamente ese servicio**, sin tocar los demás |
+
+**¿Por qué existe el `--profile`?**
+
+En el `docker-compose.yml`, el servicio `bdd-tests` tiene la propiedad:
+```yaml
+profiles:
+  - bdd
+```
+
+Esto hace que Docker Compose lo **excluya por defecto** de todos sus comandos. Un `docker compose up` normal levanta todos los microservicios sin ejecutar las pruebas. Solo al pasar `--profile bdd` el servicio se vuelve visible para el orquestador.
+
+**¿Qué pasa si se omiten partes del comando?**
+
+```bash
+docker compose up                          # ❌ bdd-tests no existe para Compose (ignorado por perfil)
+docker compose --profile bdd up            # ⚠️  levanta TODOS los servicios + bdd-tests al mismo tiempo
+docker compose --profile bdd up bdd-tests  # ✅ solo construye y ejecuta las pruebas BDD
+```
+
+**Requisito previo:** el sistema debe estar ya corriendo (`docker compose up -d`) antes de ejecutar este comando, ya que `bdd-tests` no levanta los microservicios — solo los usa como dependencias de red.
+
+#### 7. Interpretar los resultados
+
+```
+Feature: Onboarding de empleados
+  ✓ Registro exitoso genera credenciales de acceso automáticamente
+  ✓ Registro exitoso genera una notificación de bienvenida
+  ✓ El nuevo empleado puede establecer contraseña y hacer login
+  ✓ Registro falla con departamento inexistente
+  ✓ Registro falla cuando faltan campos obligatorios
+
+18 scenarios (18 passed)
+77 steps (77 passed)
+```
+
+- `✓` — El escenario pasó correctamente
+- `✗` — El escenario falló; se muestra qué se esperaba y qué se obtuvo
+- `?` — El paso no tiene implementación (pending)
+
+**Cómo probar que las pruebas detectan fallos:** modificar un código esperado, por ejemplo en `seguridad.feature`:
+```gherkin
+# Cambiar el código esperado de 401 a 200 (incorrecto)
+Entonces la respuesta debe tener código 200
+```
+La salida mostrará:
+```
+AssertionError: Se esperaba código HTTP 200 pero se obtuvo 401.
+Cuerpo: {"message":"Unauthorized","statusCode":401}
+```
+
+---
+
+### 📐 Estructura del proyecto de pruebas
+
+```
+e2e-tests/
+├── cucumber.json              ← Configuración de Cucumber (require paths, formato)
+├── package.json               ← Dependencias: @cucumber/cucumber, axios, dotenv
+├── Dockerfile                 ← Contenedor para ejecutar sin instalar dependencias
+├── .env.example               ← Plantilla de variables de entorno
+├── .env                       ← Variables activas (no versionar en producción)
+│
+├── features/                  ← Archivos Gherkin en español
+│   ├── humo.feature           ← Verificación de que todos los servicios responden
+│   ├── seguridad.feature      ← Control de acceso JWT y RBAC
+│   ├── onboarding.feature     ← Registro de empleados + verificación asincrónica
+│   └── offboarding.feature    ← Desvinculación + bloqueo de acceso
+│
+├── step_definitions/          ← Implementaciones de los pasos
+│   ├── comunes.steps.js       ← Aserciones compartidas (HTTP code, notificaciones)
+│   ├── humo.steps.js          ← Steps de prueba de humo
+│   ├── seguridad.steps.js     ← Steps de autenticación y RBAC
+│   ├── onboarding.steps.js    ← Steps de registro + polling
+│   └── offboarding.steps.js   ← Steps de desvinculación + polling
+│
+└── support/
+    ├── world.js               ← Contexto compartido (token, response, IDs) — 1 instancia por escenario
+    ├── hooks.js               ← Before/After: limpieza de datos entre escenarios
+    └── polling.js             ← Función esperarHastaQue() para eventual consistency
+```
+
+---
+
+### 🎭 Descripción de los escenarios implementados
+
+#### Feature: Verificación del sistema (Prueba de humo) — 4 escenarios
+| Escenario | Flujo que cubre |
+|---|---|
+| El servicio de empleados responde | `GET /employees` → 401 (requiere auth) = servicio activo |
+| El servicio de departamentos responde | `GET /departments` → 401 = servicio activo |
+| El servicio de autenticación responde | `GET /auth/login` → respuesta del servicio |
+| El servicio de notificaciones responde | `GET /notifications` → 401 = servicio activo |
+
+#### Feature: Seguridad y control de acceso — 6 escenarios
+| Escenario | Flujo que cubre |
+|---|---|
+| Acceso denegado sin token | `GET /employees` sin Authorization → 401 |
+| Acceso denegado con token malformado | Token string inválido → 401 |
+| USER puede consultar pero no crear | `GET /employees` con USER → 200; `POST /employees` con USER → 403 |
+| ADMIN puede crear y consultar | `GET /employees` y `GET /departments` con ADMIN → 200 |
+| Login con credenciales incorrectas | `POST /auth/login` con clave errónea → 401 |
+| Usuario inactivo no puede hacer login | `POST /auth/login` con `exempleado@empresa.com` → 401 |
+
+#### Feature: Onboarding con verificación asincrónica — 5 escenarios
+| Escenario | Flujo que cubre |
+|---|---|
+| Registro genera credenciales | `POST /employees` → `employee.created` → `auth-service` crea usuario (polling) |
+| Registro genera notificación | `POST /employees` → `employee.created` → `notifications-service` crea `WELCOME` (polling) |
+| Empleado puede hacer login | Registro → recuperar contraseña → reset → `POST /auth/login` exitoso |
+| Falla con departamento inexistente | `POST /employees` con UUID ficticio → 400 |
+| Falla sin campos obligatorios | `POST /employees` sin email → 400 |
+
+#### Feature: Offboarding — 3 escenarios
+| Escenario | Flujo que cubre |
+|---|---|
+| Desvinculación genera notificación | `DELETE /employees/:id` → `employee.deleted` → notificación `OFFBOARDING` (polling) |
+| Empleado desvinculado no puede hacer login | Delete → `POST /auth/login` con empleado → 401 (polling) |
+| Recuperación falla para desvinculado | Delete → `POST /auth/recover-password` → 404 (polling) |
+
+---
+
+### ⏱️ Justificación de los parámetros de Polling
+
+```
+Parámetro           Valor    Justificación
+─────────────────── ──────── ─────────────────────────────────────────────────────
+maxIntentos         15       Cubre carga alta en el broker y reinicios de servicio
+intervaloMs         2000ms   Balance entre velocidad de la prueba y carga en APIs
+timeoutTotal        ~30s     El evento se procesa en <5s normalmente; 30s da margen
+                             suficiente para máquinas lentas o entornos CI/CD
+```
+
+**Por qué no se usa `sleep` fijo:**
+- Si el evento se procesa en 1s → la prueba termina en 1s, no en 30s
+- Si el sistema tarda más de lo usual → el polling lo tolera sin fallar
+- Elimina pruebas intermitentes (flaky tests) por variaciones de timing en Docker
+
+---
+
+### 🔒 Estrategia de Aislamiento de Datos
+
+Cada escenario es completamente independiente gracias a:
+1. **Emails únicos por escenario:** `empleado.test.<timestamp+random>@empresa.com` — nunca colisionan entre ejecuciones ni entre escenarios paralelos
+2. **Contexto World por escenario:** Cucumber crea una instancia nueva del World por escenario — no hay estado compartido entre escenarios
+3. **Hook `After` automático:** Limpia empleados y departamentos creados usando el token ADMIN, incluso si el escenario falla a medias
+4. **Antecedentes en offboarding:** Recrean el estado completo (departamento + empleado + credenciales activas) desde cero en cada escenario
+
+---
+
+## 📁 Estructura del Proyecto (Completa — Reto 5)
+
+```
+microservices-challenges/
+├── docker-compose.yml            ← Orquestación completa (10 contenedores + bdd-tests profile)
+├── docker-compose.dev.yml        ← Override para desarrollo con hot-reload
+├── Makefile                      ← Comandos convenientes
+├── README.md                     ← Este archivo
+│
+├── e2e-tests/                    ← Reto 5 — Suite BDD (proyecto independiente)
+│   ├── cucumber.json             ← Configuración de Cucumber.js
+│   ├── package.json             ← Dependencias: @cucumber/cucumber, axios, dotenv
+│   ├── Dockerfile               ← Contenedor opcional para CI/CD
+│   ├── .env.example             ← Plantilla de variables
+│   ├── features/                ← Archivos .feature (Gherkin en español)
+│   │   ├── humo.feature
+│   │   ├── seguridad.feature
+│   │   ├── onboarding.feature
+│   │   └── offboarding.feature
+│   ├── step_definitions/        ← Implementaciones de pasos (peticiones HTTP reales)
+│   │   ├── comunes.steps.js     ← Aserciones compartidas
+│   │   ├── humo.steps.js
+│   │   ├── seguridad.steps.js
+│   │   ├── onboarding.steps.js
+│   │   └── offboarding.steps.js
+│   └── support/
+│       ├── world.js             ← Contexto compartido (1 instancia por escenario)
+│       ├── hooks.js             ← Limpieza de datos entre escenarios
+│       └── polling.js           ← esperarHastaQue() — sin sleep fijo
+│
+├── auth-service/                 ← Reto 4 (Identity Provider & Security)
+│   ├── Dockerfile
+│   └── src/auth/
+│       ├── auth.controller.ts   ← POST /auth/login /recover-password /reset-password
+│       ├── users.consumer.ts    ← @EventPattern('employee.created' | 'employee.deleted')
+│       └── strategies/jwt.strategy.ts
+├── employees-service/            ← Reto 1, 2, 3 y 4
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   └── src/
+│       ├── security/            ← Guards JWT + RBAC
+│       ├── employees/           ← CRUD + DELETE + event publishing
+│       ├── messaging/           ← MessagingModule + EventsPublisherService
+│       └── resilience/          ← Circuit Breaker
+├── departments-service/          ← Reto 2 y 4
+│   ├── Dockerfile
+│   └── src/departments/
+├── profiles-service/             ← Reto 3 y 4
+│   ├── Dockerfile
+│   └── src/profiles/
+└── notifications-service/        ← Reto 3 y 4
+    ├── Dockerfile
+    └── src/
+        ├── security/
+        └── notifications/
+```

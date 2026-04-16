@@ -1,0 +1,13 @@
+{
+  "default": {
+    "require": [
+      "support/**/*.js",
+      "step_definitions/**/*.js"
+    ],
+    "format": [
+      "progress-bar",
+      "summary"
+    ],
+    "publishQuiet": true
+  }
+}

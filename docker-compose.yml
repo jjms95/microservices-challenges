@@ -246,6 +246,38 @@ services:
     networks:
       - microservices-network
 
+  # ─────────────────────────────────────────────
+  #  BDD Tests
+  # ─────────────────────────────────────────────
+  bdd-tests:
+    build:
+      context: ./e2e-tests
+      dockerfile: Dockerfile
+    container_name: bdd-tests
+    profiles:
+      - bdd
+    environment:
+      EMPLOYEES_URL: http://employees-service:8080
+      DEPARTMENTS_URL: http://departments-service:8081
+      AUTH_URL: http://auth-service:8085
+      NOTIFICATIONS_URL: http://notifications-service:8084
+      PROFILES_URL: http://profiles-service:8083
+      ADMIN_EMAIL: admin@empresa.com
+      ADMIN_PASSWORD: Admin123!
+      USER_EMAIL: usuario@empresa.com
+      USER_PASSWORD: User123!
+      INACTIVE_EMAIL: exempleado@empresa.com
+      POLLING_MAX_ATTEMPTS: "15"
+      POLLING_INTERVAL_MS: "2000"
+    depends_on:
+      - employees-service
+      - departments-service
+      - auth-service
+      - notifications-service
+      - profiles-service
+    networks:
+      - microservices-network
+
 # ─────────────────────────────────────────────
 #  Volumes & Networks
 # ─────────────────────────────────────────────
