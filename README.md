@@ -59,6 +59,9 @@
 | Seguridad | Passport, JSON Web Tokens (JWT), BCrypt, RBAC |
 | Contenedores | Docker + Docker Compose |
 | Documentación API | Swagger (`@nestjs/swagger`) |
+| Integración Continua (CI) | **Jenkins** + Configuration as Code (JCasC) |
+| Calidad de Código | **SonarQube** + JaCoCo / LCOV |
+| Image Registry | Local Docker Registry (`registry:2`) |
 
 ---
 
@@ -91,6 +94,9 @@ Se evaluaron cuatro opciones antes de seleccionar RabbitMQ:
 | `profiles-service` | `:8083` | [/api](http://localhost:8083/api) | Consumer async + REST (Protegido JWT) | R3, R4 |
 | `notifications-service` | `:8084` | [/api](http://localhost:8084/api) | Consumer puramente reactivo (Protegido JWT)| R3, R4 |
 | `message-broker` (RabbitMQ) | `:5672` / `:15672` | — | Fan-out exchange | R3, R4 |
+| `jenkins` | `:8080` / `:50000` | — | Servidor de Integración Continua (CI) | R6 |
+| `sonarqube` | `:9000` | — | Servidor de Análisis Estático (Quality Gate) | R6 |
+| `registry` | `:5000` | — | Repositorio local de imágenes Docker | R6 |
 
 ---
 
@@ -726,4 +732,48 @@ microservices-challenges/
     └── src/
         ├── security/
         └── notifications/
+
+---
+
+## 🏗️ Reto 6 — Integración Continua (CI/CD)
+
+### ¿Qué es la Integración Continua en este proyecto?
+
+Se ha implementado un entorno completo de CI/CD para automatizar el ciclo de vida de desarrollo de los microservicios, asegurando que cada cambio pase por validaciones estrictas antes de ser empaquetado.
+
+### 🛠️ Herramientas Utilizadas
+
+- **Jenkins**: Orquestador principal de pipelines. Configurado mediante *Jenkins Configuration as Code (JCasC)* para garantizar reproducibilidad. Corre con soporte **Docker in Docker (DinD)** para poder construir imágenes desde el pipeline.
+- **SonarQube**: Plataforma de análisis estático de código para detectar bugs, vulnerabilidades y evaluar la cobertura de pruebas.
+- **Docker Registry Local**: Un repositorio local (`localhost:5000`) donde se almacenan las imágenes Docker de nuestros microservicios una vez superan todas las etapas del pipeline.
+
+### 🔄 Flujo del Pipeline (Jenkinsfile)
+
+Cada microservicio implementa un `Jenkinsfile` declarativo con las siguientes etapas:
+
+1. **Checkout**: Jenkins descarga la última versión del código desde el repositorio local o remoto.
+2. **Build & Test**:
+   - `npm install`: Instalación de dependencias.
+   - `npm run test:cov`: Ejecución de pruebas unitarias y generación de reportes de cobertura (LCOV/JaCoCo).
+3. **SonarQube Analysis**:
+   - Ejecución del `sonar-scanner` analizando la calidad de código e integrando el reporte de cobertura.
+   - SonarQube evalúa el estado del proyecto para decidir si cumple los requisitos (Quality Gate).
+4. **Docker Build & Push**:
+   - Construcción de la imagen conectándose al socket de Docker del host: `docker build -t localhost:5000/<servicio>:latest .`
+   - Empaquetado y subida de la imagen: `docker push localhost:5000/<servicio>:latest`
+
+### 🧪 Instrucciones para probar el CI/CD
+
+1. Levanta el ecosistema incluyendo la infraestructura CI:
+   ```bash
+   docker compose up -d --build
+   ```
+2. Accede a Jenkins: [http://localhost:8080](http://localhost:8080).
+   - *Nota: Gracias a JCasC, Jenkins ya viene preconfigurado con todos los plugins, Node.js y la conexión a SonarQube, por lo que no necesitas hacer configuraciones manuales iniciales.*
+3. Accede a SonarQube: [http://localhost:9000](http://localhost:9000) (Usuario/Contraseña: `admin` / `admin`).
+4. Crea un nuevo Pipeline en Jenkins para alguno de los microservicios (ej. `employees-service`).
+   - Ve a **Nueva Tarea** > ingresa un nombre > **Pipeline**.
+   - En la sección **Pipeline**, en **Definition**, selecciona **Pipeline script from SCM**.
+   - Configura el repositorio de Git apuntando a tu proyecto y la ruta del script: `employees-service/Jenkinsfile`.
+5. Ejecuta el pipeline (`Construir ahora`) y observa cómo el código se descarga, se prueba, se analiza en SonarQube y, si es exitoso, la imagen Docker resultante se guarda en tu Registry local en el puerto 5000.
 ```

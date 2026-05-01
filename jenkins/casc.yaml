@@ -1,0 +1,36 @@
+jenkins:
+  systemMessage: "Bienvenido al entorno Jenkins CI/CD para Microservices Challenges (Reto 6)"
+  numExecutors: 2
+  mode: NORMAL
+  scmCheckoutRetryCount: 2
+
+unclassified:
+  location:
+    url: http://localhost:8080/
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: "SonarQube"
+        serverUrl: "http://sonarqube:9000"
+        # Para un entorno real, usar credentialsId con un token.
+        # Aquí permitiremos el primer análisis sin token estricto o lo configuraremos en Sonar manualmente.
+
+tool:
+  git:
+    installations:
+      - name: "Default"
+        home: "git"
+  nodejs:
+    installations:
+      - name: "NodeJS 20"
+        properties:
+        - installSource:
+            installers:
+            - nodeJSInstaller:
+                id: "20.11.1"
+                npmPackages: ""
+                npmPackagesRefreshHours: 72
+
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false

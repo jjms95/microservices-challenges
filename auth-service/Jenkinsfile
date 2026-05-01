@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs "NodeJS 20"
+    }
+
+    environment {
+        SERVICE_NAME = "auth-service"
+        IMAGE_NAME = "localhost:5000/${SERVICE_NAME}"
+        IMAGE_TAG = "latest"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout de todo el repositorio.
+                checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                dir('auth-service') {
+                    sh 'npm install'
+                    sh 'npm run test:cov' // Ejecutar tests unitarios con cobertura
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('auth-service') {
+                    withSonarQubeEnv('SonarQube') {
+                        // Requiere el sonar-scanner CLI instalado globalmente o usando npx
+                        sh 'npx sonar-scanner \
+                            -Dsonar.projectKey=auth-service \
+                            -Dsonar.sources=src \
+                            -Dsonar.tests=test \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                dir('auth-service') {
+                    // Se construye la imagen conectándose al Docker Daemon del host
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            dir('auth-service') {
+                // Publicar el reporte de JaCoCo/LCOV y los tests en Jenkins
+                junit 'junit.xml' || true
+            }
+        }
+        success {
+            echo "Pipeline completado exitosamente para ${SERVICE_NAME}."
+        }
+        failure {
+            echo "El Pipeline falló. Revisar los logs para más detalle."
+        }
+    }
+}
