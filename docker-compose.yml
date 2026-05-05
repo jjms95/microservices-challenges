@@ -123,6 +123,24 @@ services:
       timeout: 5s
       retries: 5
 
+  sonar-db:
+    image: postgres:16-alpine
+    container_name: sonar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U sonar -d sonarqube" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─────────────────────────────────────────────
   #  Microservices
   # ─────────────────────────────────────────────
@@ -279,7 +297,7 @@ services:
       - microservices-network
 
   # ─────────────────────────────────────────────
-  #  CI/CD Infrastructure (Reto 6)
+  #  CI/CD Infrastructure
   # ─────────────────────────────────────────────
   jenkins:
     build:
@@ -295,24 +313,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - microservices-network
-
-  sonar-db:
-    image: postgres:16-alpine
-    container_name: sonar-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
-      POSTGRES_DB: sonarqube
-    volumes:
-      - sonar_db_data:/var/lib/postgresql/data
-    networks:
-      - microservices-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U sonar -d sonarqube" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   sonarqube:
     image: sonarqube:10.4.1-community
@@ -362,7 +362,6 @@ volumes:
   sonarqube_logs:
   sonarqube_extensions:
   registry_data:
-
 
 networks:
   microservices-network:

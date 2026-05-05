@@ -1,98 +1,140 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Notifications Service — Python / FastAPI
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Microservicio reactivo que consume eventos de RabbitMQ y registra el historial de notificaciones.
+**Reescrito de NestJS/TypeScript a Python/FastAPI** como parte del Reto 6.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Stack tecnológico
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Categoría       | Tecnología            |
+|-----------------|-----------------------|
+| Lenguaje        | Python 3.12           |
+| Framework HTTP  | FastAPI 0.115         |
+| ORM             | SQLAlchemy 2 (async)  |
+| Base de datos   | PostgreSQL 16         |
+| Driver async DB | asyncpg               |
+| Message broker  | RabbitMQ (aio-pika)   |
+| Seguridad       | PyJWT                 |
+| Docs            | Swagger UI / ReDoc    |
 
-## Project setup
+---
 
-```bash
-$ npm install
+## Endpoints HTTP
+
+Todos los endpoints requieren **Bearer JWT** con rol `USER` o `ADMIN`.
+
+| Método | Ruta                             | Descripción                              |
+|--------|----------------------------------|------------------------------------------|
+| GET    | `/notifications`                 | Lista todas las notificaciones           |
+| GET    | `/notifications/{employeeId}`    | Notificaciones de un empleado específico |
+| GET    | `/api`                           | Swagger UI                               |
+| GET    | `/api/redoc`                     | ReDoc                                    |
+| GET    | `/api/openapi.json`              | Esquema OpenAPI JSON                     |
+
+---
+
+## Eventos RabbitMQ consumidos
+
+| Patrón             | Acción                                                  |
+|--------------------|--------------------------------------------------------|
+| `employee.created` | Guarda notificación tipo `WELCOME` en la DB             |
+| `employee.deleted` | Guarda notificación tipo `OFFBOARDING` en la DB         |
+| `user.created`     | Registra log de seguridad (enlace de reset de contraseña)|
+| `user.recovered`   | Registra log de seguridad (enlace de reset de contraseña)|
+
+Exchange: `employees_exchange` (fanout) — Queue: `notifications_queue`
+
+---
+
+## Seguridad (JWT)
+
+- Tokens firmados con HS256, secreto compartido (`JWT_SECRET`)
+- Los tokens de tipo `RESET_PASSWORD` son rechazados con 401
+- ADMIN siempre tiene acceso; los roles `USER` y `ADMIN` pueden consultar notificaciones
+
+---
+
+## Estructura del proyecto
+
+```
+notifications-service/
+├── app/
+│   ├── __init__.py
+│   ├── config.py       # Configuración desde variables de entorno
+│   ├── consumer.py     # Consumidor aio-pika (RabbitMQ)
+│   ├── database.py     # Engine async SQLAlchemy + sesión
+│   ├── main.py         # Bootstrap FastAPI (startup, router, OpenAPI)
+│   ├── models.py       # Modelo SQLAlchemy Notification
+│   ├── router.py       # Endpoints HTTP FastAPI
+│   ├── schemas.py      # Schemas Pydantic (request/response)
+│   └── security.py     # JWT decode + dependency require_roles()
+├── requirements.txt
+├── Dockerfile
+├── .env                # Variables de entorno locales
+└── README.md
 ```
 
-## Compile and run the project
+---
+
+## Variables de entorno
+
+| Variable       | Valor por defecto                      | Descripción                  |
+|----------------|----------------------------------------|------------------------------|
+| `DB_HOST`      | `localhost`                            | Host de PostgreSQL           |
+| `DB_PORT`      | `5434`                                 | Puerto de PostgreSQL         |
+| `DB_USERNAME`  | `postgres`                             |                              |
+| `DB_PASSWORD`  | `postgres`                             |                              |
+| `DB_NAME`      | `notifications_db`                     |                              |
+| `RABBITMQ_URL` | `amqp://admin:admin@localhost:5672`    | URL de conexión AMQP         |
+| `JWT_SECRET`   | `supersecret2026`                      | Secreto compartido para JWT  |
+
+---
+
+## Ejecución local
 
 ```bash
-# development
-$ npm run start
+# Crear y activar entorno virtual
+python -m venv .venv && source .venv/bin/activate
 
-# watch mode
-$ npm run start:dev
+# Instalar dependencias
+pip install -r requirements.txt
 
-# production mode
-$ npm run start:prod
+# (Opcional) cargar variables de entorno
+export $(cat .env | xargs)
+
+# Iniciar el servicio
+uvicorn app.main:app --host 0.0.0.0 --port 8084 --reload
 ```
 
-## Run tests
+Swagger UI disponible en: **http://localhost:8084/api**
+
+---
+
+## Docker
 
 ```bash
-# unit tests
-$ npm run test
+# Construir imagen
+docker build -t notifications-service .
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Ejecutar con docker-compose (desde la raíz del proyecto)
+docker compose up notifications-service
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Comparativa NestJS → FastAPI
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Concepto NestJS              | Equivalente FastAPI/Python          |
+|------------------------------|-------------------------------------|
+| `@Module`                    | `FastAPI()` + `include_router()`    |
+| `TypeOrmModule`              | SQLAlchemy async engine             |
+| `@Entity` / `@Column`        | SQLAlchemy `Column` / `Base`        |
+| `@Injectable` Service        | Clase `NotificationsService(db)`    |
+| `@Controller` / `@Get`       | `APIRouter` + `@router.get()`       |
+| `@EventPattern` Consumer     | `queue.consume()` con aio-pika      |
+| `ValidationPipe`             | Pydantic `BaseModel` automático     |
+| `JwtAuthGuard`               | `Depends(get_current_user)`         |
+| `RolesGuard` + `@Roles()`    | `Depends(require_roles(...))`       |
+| `SwaggerModule.setup('api')` | `docs_url="/api"`                   |
+| `addBearerAuth()`            | `securitySchemes.bearerAuth` en OAS |
