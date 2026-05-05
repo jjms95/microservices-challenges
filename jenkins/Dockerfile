@@ -5,18 +5,14 @@ USER root
 
 # Instalamos el cliente de Docker para poder usar 'docker' dentro de Jenkins
 RUN apt-get update && \
-    apt-get install -y docker.io && \
+    apt-get install -y docker.io python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
-# Volvemos al usuario jenkins (o nos quedamos en root si hay problemas de permisos con el socket,
-# pero para mejores prácticas intentamos volver a jenkins y ajustaremos en el compose)
-# En muchos entornos locales, es más estable dejarlo en root para evitar problemas de permisos
-# con /var/run/docker.sock montado desde Windows. 
-# Lo dejaremos como root para asegurar que no falle la conexión al daemon.
-
-# Variables de entorno para omitir el Setup Wizard de Jenkins y usar JCasC
 ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
-ENV CASC_JENKINS_CONFIG="/var/jenkins_home/casc.yaml"
+ENV CASC_JENKINS_CONFIG="/etc/jenkins/casc.yaml"
+
+# Allow git to clone from local file:// URIs (useful for local development with mounted workspaces)
+RUN git config --system protocol.file.allow always
 
 # Instalamos los plugins necesarios
 RUN jenkins-plugin-cli --plugins \
@@ -27,7 +23,8 @@ RUN jenkins-plugin-cli --plugins \
     "sonar" \
     "jacoco" \
     "htmlpublisher" \
-    "nodejs"
+    "nodejs" \
+    "job-dsl"
 
-# Copiamos el archivo de configuración JCasC
-COPY casc.yaml /var/jenkins_home/casc.yaml
+RUN mkdir -p /etc/jenkins
+COPY casc.yaml /etc/jenkins/casc.yaml

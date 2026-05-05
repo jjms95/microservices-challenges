@@ -6,3 +6,5 @@ aio-pika==9.4.3
 pydantic==2.10.3
 PyJWT==2.10.1
 python-dotenv==1.0.1
+pytest==8.0.0
+pytest-cov==4.1.0

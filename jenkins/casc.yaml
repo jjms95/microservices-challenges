@@ -30,7 +30,47 @@ tool:
                 id: "20.11.1"
                 npmPackages: ""
                 npmPackagesRefreshHours: 72
+  sonarRunnerInstallation:
+    installations:
+      - name: "SonarScanner"
+        properties:
+          - installSource:
+              installers:
+                - sonarRunnerInstaller:
+                    id: "5.0.1.3006"
 
-security:
-  globalJobDslSecurityConfiguration:
-    useScriptSecurity: false
+# Script security is managed via in-process script approval (Manage Jenkins > In-process Script Approval).
+# The globalJobDslSecurityConfiguration key requires the Job DSL plugin — omitted to avoid CASC init failure.
+
+jobs:
+  - script: |
+      pipelineJob('employees-service-pipeline') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('file:///workspace')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('employees-service/Jenkinsfile')
+          }
+        }
+      }
+      pipelineJob('notifications-service-pipeline') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('file:///workspace')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('notifications-service/Jenkinsfile')
+          }
+        }
+      }

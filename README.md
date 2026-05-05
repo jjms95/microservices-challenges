@@ -739,41 +739,60 @@ microservices-challenges/
 
 ### ¿Qué es la Integración Continua en este proyecto?
 
-Se ha implementado un entorno completo de CI/CD para automatizar el ciclo de vida de desarrollo de los microservicios, asegurando que cada cambio pase por validaciones estrictas antes de ser empaquetado.
+La Integración Continua (CI) es una práctica de desarrollo en la que los cambios de código se prueban, analizan y empaquetan de forma automatizada. Se integra en este proyecto para:
+1. **Detectar errores tempranamente:** No esperar hasta producción para saber si un microservicio compila o si rompió alguna prueba.
+2. **Estandarizar calidad:** Asegurar que todo el código pase un umbral de cobertura (70%) mediante un Quality Gate.
+3. **Despliegues confiables:** Generar automáticamente imágenes Docker listas para producción al finalizar el ciclo.
 
 ### 🛠️ Herramientas Utilizadas
 
-- **Jenkins**: Orquestador principal de pipelines. Configurado mediante *Jenkins Configuration as Code (JCasC)* para garantizar reproducibilidad. Corre con soporte **Docker in Docker (DinD)** para poder construir imágenes desde el pipeline.
+- **Jenkins**: Orquestador principal de pipelines. Configurado mediante *Jenkins Configuration as Code (JCasC)* y el plugin **Job DSL** para que los pipelines se auto-aprovisionen.
 - **SonarQube**: Plataforma de análisis estático de código para detectar bugs, vulnerabilidades y evaluar la cobertura de pruebas.
-- **Docker Registry Local**: Un repositorio local (`localhost:5000`) donde se almacenan las imágenes Docker de nuestros microservicios una vez superan todas las etapas del pipeline.
+- **Docker Registry Local**: Un repositorio local (`localhost:5000`) donde se almacenan las imágenes Docker preparadas para despliegue.
 
-### 🔄 Flujo del Pipeline (Jenkinsfile)
+### 🔑 Acceso a Jenkins y SonarQube
 
-Cada microservicio implementa un `Jenkinsfile` declarativo con las siguientes etapas:
+| Servicio | URL | Credenciales |
+|---|---|---|
+| **Jenkins** | [http://localhost:8086](http://localhost:8086) | Acceso anónimo (No requiere credenciales gracias a JCasC) |
+| **SonarQube** | [http://localhost:9000](http://localhost:9000) | `admin` / `admin` (se pedirá cambio en el primer login) |
 
-1. **Checkout**: Jenkins descarga la última versión del código desde el repositorio local o remoto.
-2. **Build & Test**:
-   - `npm install`: Instalación de dependencias.
-   - `npm run test:cov`: Ejecución de pruebas unitarias y generación de reportes de cobertura (LCOV/JaCoCo).
-3. **SonarQube Analysis**:
-   - Ejecución del `sonar-scanner` analizando la calidad de código e integrando el reporte de cobertura.
-   - SonarQube evalúa el estado del proyecto para decidir si cumple los requisitos (Quality Gate).
-4. **Docker Build & Push**:
-   - Construcción de la imagen conectándose al socket de Docker del host: `docker build -t localhost:5000/<servicio>:latest .`
-   - Empaquetado y subida de la imagen: `docker push localhost:5000/<servicio>:latest`
+### ⚙️ Instrucciones de Configuración y Uso
 
-### 🧪 Instrucciones para probar el CI/CD
-
-1. Levanta el ecosistema incluyendo la infraestructura CI:
-   ```bash
-   docker compose up -d --build
-   ```
-2. Accede a Jenkins: [http://localhost:8080](http://localhost:8080).
-   - *Nota: Gracias a JCasC, Jenkins ya viene preconfigurado con todos los plugins, Node.js y la conexión a SonarQube, por lo que no necesitas hacer configuraciones manuales iniciales.*
-3. Accede a SonarQube: [http://localhost:9000](http://localhost:9000) (Usuario/Contraseña: `admin` / `admin`).
-4. Crea un nuevo Pipeline en Jenkins para alguno de los microservicios (ej. `employees-service`).
-   - Ve a **Nueva Tarea** > ingresa un nombre > **Pipeline**.
-   - En la sección **Pipeline**, en **Definition**, selecciona **Pipeline script from SCM**.
-   - Configura el repositorio de Git apuntando a tu proyecto y la ruta del script: `employees-service/Jenkinsfile`.
-5. Ejecuta el pipeline (`Construir ahora`) y observa cómo el código se descarga, se prueba, se analiza en SonarQube y, si es exitoso, la imagen Docker resultante se guarda en tu Registry local en el puerto 5000.
+#### 1. Cómo levantar el sistema con Jenkins incluido
+```bash
+docker compose up -d --build
 ```
+Esto levantará toda la arquitectura de microservicios más la infraestructura CI/CD (`jenkins`, `sonarqube`, `docker-registry`). **La contraseña inicial de Jenkins se omite** porque el Setup Wizard ha sido deshabilitado y JCasC aprovisiona todo automáticamente.
+
+#### 2. Configuración en SonarQube (Manual de una sola vez)
+1. Entra a SonarQube, ve a **Quality Gates** y crea uno nuevo llamado `Reto6 Gate` exigiendo **Coverage >= 70%**. Establécelo como Default.
+2. Genera un token en SonarQube (Global Analysis Token).
+3. Ve a **Administration > Configuration > Webhooks** y añade uno apuntando a Jenkins: `http://jenkins:8080/sonarqube-webhook/`.
+4. Ve a Jenkins > Administrar Jenkins > Credentials, y crea un **Secret text** con ID `sonar-token` conteniendo tu token.
+
+#### 3. Cómo ejecutar un pipeline manualmente
+1. Abre [http://localhost:8086](http://localhost:8086).
+2. Verás dos pipelines ya creados: `employees-service-pipeline` y `notifications-service-pipeline`. *(Fueron importados automáticamente por JCasC + Job DSL)*.
+3. Haz clic en uno de ellos y selecciona **Build Now** (Construir ahora).
+
+### 🔄 Descripción de las Etapas del Pipeline
+
+| Etapa | Qué verifica |
+|---|---|
+| **Checkout** | Clona el código fuente desde el workspace local montado. |
+| **Build** | Instala las dependencias y compila el proyecto (`npm install`, `pip install`). Verifica que no haya errores de sintaxis o dependencias rotas. |
+| **Test & Coverage** | Ejecuta pruebas unitarias (`npm run test:cov`, `pytest`). Falla si alguna prueba no pasa. Genera el XML/LCOV. |
+| **SonarQube Analysis** | Envía el reporte de cobertura al servidor SonarQube para buscar Code Smells y Vulnerabilidades. |
+| **Quality Gate** | Espera a que SonarQube confirme si se superó el umbral (70%). Si es menor, la etapa falla. |
+| **Package** | Construye la imagen Docker del microservicio y la hace `push` al Docker Registry local (`localhost:5000`). |
+| **E2E Tests** | Levanta el ecosistema Docker completo, ejecuta la suite de pruebas funcionales (Cucumber/BDD) del Reto 5, y lo apaga (`docker compose down`). |
+
+### 🚦 Cómo interpretar los resultados
+
+- 🟩 **Etapa en Verde (Éxito):** La condición de esa fase se cumplió (ej. todas las pruebas pasaron, el Quality Gate dio luz verde, la imagen se subió).
+- 🟥 **Etapa en Rojo (Fallo):** Si el pipeline se detiene aquí, ocurrió un error (ej. una prueba unitaria falló, la cobertura de SonarQube fue menor al 70%, el Dockerfile estaba mal estructurado). Revisa los `Logs` de la etapa para ver el motivo exacto.
+
+*(Adjunte debajo la captura de pantalla de un pipeline exitoso finalizado)*
+![Pipeline Exitoso Jenkins](./docs/pipeline_success.png)
+

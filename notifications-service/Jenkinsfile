@@ -1,32 +1,35 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'NodeJS 20'
-    }
     environment {
         SCANNER_HOME = tool 'SonarScanner'
     }
     stages {
         stage('Build') {
             steps {
-                dir('employees-service') {
-                    echo "Instalando dependencias y compilando..."
-                    sh 'npm install'
-                    sh 'npm run build'
+                dir('notifications-service') {
+                    echo "Instalando dependencias de Python..."
+                    sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install -r requirements.txt
+                    '''
                 }
             }
         }
         stage('Test & Coverage') {
             steps {
-                dir('employees-service') {
+                dir('notifications-service') {
                     echo "Ejecutando pruebas y generando cobertura..."
-                    sh 'npm run test:cov'
+                    sh '''
+                    . venv/bin/activate
+                    pytest --cov=app --cov-report=xml
+                    '''
                 }
             }
         }
         stage('SonarQube Analysis') {
             steps {
-                dir('employees-service') {
+                dir('notifications-service') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
                             sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
@@ -38,16 +41,15 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // Requiere que el Webhook esté configurado en SonarQube hacia Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
         stage('Package') {
             steps {
-                dir('employees-service') {
+                dir('notifications-service') {
                     script {
-                        def imageName = "localhost:5000/employees-service"
+                        def imageName = "localhost:5000/notifications-service"
                         def imageTag = "${env.BUILD_NUMBER}"
                         sh "docker build -t ${imageName}:${imageTag} -t ${imageName}:latest ."
                         sh "docker push ${imageName}:${imageTag}"
@@ -60,11 +62,12 @@ pipeline {
             steps {
                 echo "Levantando el sistema y corriendo pruebas E2E..."
                 sh 'docker compose up -d'
-                // Esperar a que los servicios estén listos
                 sh 'sleep 30'
                 dir('e2e-tests') {
-                    sh 'npm install'
-                    sh 'npm test'
+                    sh '''
+                    npm install
+                    npm test
+                    '''
                 }
             }
             post {
