@@ -50,13 +50,16 @@ jobs:
             scm {
               git {
                 remote {
-                  url('file:///workspace')
+                  url('https://github.com/jjms95/microservices-challenges.git')
                 }
                 branches('*/main')
               }
             }
             scriptPath('employees-service/Jenkinsfile')
           }
+        }
+        triggers {
+          scm('* * * * *')
         }
       }
       pipelineJob('notifications-service-pipeline') {
@@ -65,12 +68,15 @@ jobs:
             scm {
               git {
                 remote {
-                  url('file:///workspace')
+                  url('https://github.com/jjms95/microservices-challenges.git')
                 }
                 branches('*/main')
               }
             }
             scriptPath('notifications-service/Jenkinsfile')
           }
+        }
+        triggers {
+          scm('* * * * *')
         }
       }
