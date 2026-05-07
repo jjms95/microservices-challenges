@@ -60,6 +60,13 @@ pipeline {
             }
         }
         stage('E2E Tests') {
+            environment {
+                EMPLOYEES_URL = 'http://employees-service:8080'
+                DEPARTMENTS_URL = 'http://departments-service:8081'
+                AUTH_URL = 'http://auth-service:8085'
+                NOTIFICATIONS_URL = 'http://notifications-service:8084'
+                PROFILES_URL = 'http://profiles-service:8083'
+            }
             steps {
                 echo "Corriendo pruebas E2E contra los servicios locales..."
                 dir('e2e-tests') {
