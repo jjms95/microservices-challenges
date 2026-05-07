@@ -3,6 +3,15 @@ jenkins:
   numExecutors: 2
   mode: NORMAL
   scmCheckoutRetryCount: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "admin"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
 
 unclassified:
   location:
@@ -11,7 +20,7 @@ unclassified:
     buildWrapperEnabled: true
     installations:
       - name: "SonarQube"
-        serverUrl: "http://sonarqube:9000"
+        serverUrl: "http://host.docker.internal:9000"
         credentialsId: "sonar-token"
 
 tool:
