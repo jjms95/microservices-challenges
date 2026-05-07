@@ -36,7 +36,7 @@ pipeline {
                     echo "========================================="
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
-                            sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
+                            sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN -Dsonar.host.url=http://sonarqube:9000"
                         }
                     }
                 }
