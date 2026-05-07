@@ -27,7 +27,7 @@ export class CircuitBreakerService {
         if (this.state === 'CLOSED') return true;
 
         if (this.state === 'OPEN') {
-            const elapsed = Date.now() - (this.lastFailureTime ?? 0);
+            const elapsed = Date.now() - (this.lastFailureTime || 0);
             if (elapsed >= this.cooldownMs) {
                 this.logger.warn('Circuit breaker → HALF_OPEN (probing departments-service)');
                 this.state = 'HALF_OPEN';
