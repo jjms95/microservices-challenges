@@ -76,6 +76,18 @@ pipeline {
                     '''
                 }
             }
+            post {
+                always {
+                    publishHTML(target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'e2e-tests',
+                        reportFiles: 'cucumber-report.html',
+                        reportName: 'BDD E2E Report'
+                    ])
+                }
+            }
         }
     }
     post {

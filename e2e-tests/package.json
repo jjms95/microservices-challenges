@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Suite de pruebas BDD para el sistema de microservicios de onboarding/offboarding",
   "scripts": {
-    "test": "cucumber-js",
+    "test": "cucumber-js --format summary --format html:cucumber-report.html",
     "test:seguridad": "cucumber-js features/seguridad.feature",
     "test:onboarding": "cucumber-js features/onboarding.feature",
     "test:offboarding": "cucumber-js features/offboarding.feature",
