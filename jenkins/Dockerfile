@@ -5,7 +5,7 @@ USER root
 
 # Instalamos el cliente de Docker para poder usar 'docker' dentro de Jenkins
 RUN apt-get update && \
-    apt-get install -y docker.io python3 python3-pip python3-venv curl && \
+    apt-get install -y docker.io curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalamos Docker Compose v2 (necesario para el comando 'docker compose' en la etapa E2E)

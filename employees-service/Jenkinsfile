@@ -1,13 +1,16 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'NodeJS 20'
-    }
     environment {
         SCANNER_HOME = tool 'SonarScanner'
     }
     stages {
         stage('🏗️ Build & Install') {
+            agent {
+                docker {
+                    image 'node:20'
+                    reuseNode true
+                }
+            }
             steps {
                 dir('employees-service') {
                     echo "========================================="
@@ -19,6 +22,12 @@ pipeline {
             }
         }
         stage('🧪 Unit Tests & Coverage') {
+            agent {
+                docker {
+                    image 'node:20'
+                    reuseNode true
+                }
+            }
             steps {
                 dir('employees-service') {
                     echo "========================================="
@@ -70,6 +79,12 @@ pipeline {
             }
         }
         stage('🎭 BDD E2E Tests') {
+            agent {
+                docker {
+                    image 'node:20'
+                    reuseNode true
+                }
+            }
             environment {
                 EMPLOYEES_URL = 'http://employees-service:8080'
                 DEPARTMENTS_URL = 'http://departments-service:8081'
