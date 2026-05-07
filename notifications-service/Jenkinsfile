@@ -7,10 +7,12 @@ pipeline {
         SCANNER_HOME = tool 'SonarScanner'
     }
     stages {
-        stage('Build') {
+        stage('🏗️ Build & Install') {
             steps {
                 dir('notifications-service') {
-                    echo "Instalando dependencias de Python..."
+                    echo "========================================="
+                    echo " 🏗️ INSTALANDO DEPENDENCIAS DE PYTHON"
+                    echo "========================================="
                     sh '''
                     python3 -m venv venv
                     . venv/bin/activate
@@ -19,10 +21,12 @@ pipeline {
                 }
             }
         }
-        stage('Test & Coverage') {
+        stage('🧪 Unit Tests & Coverage') {
             steps {
                 dir('notifications-service') {
-                    echo "Ejecutando pruebas y generando cobertura..."
+                    echo "========================================="
+                    echo " 🧪 EJECUTANDO PRUEBAS UNITARIAS Y COBERTURA"
+                    echo "========================================="
                     sh '''
                     . venv/bin/activate
                     pytest --cov=app --cov-report=xml
@@ -30,9 +34,12 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube Analysis') {
+        stage('🔍 SonarQube Analysis') {
             steps {
                 dir('notifications-service') {
+                    echo "========================================="
+                    echo " 🔍 ENVIANDO ANÁLISIS A SONARQUBE"
+                    echo "========================================="
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
                             sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
@@ -41,16 +48,22 @@ pipeline {
                 }
             }
         }
-        stage('Quality Gate') {
+        stage('🛡️ Quality Gate') {
             steps {
+                echo "========================================="
+                echo " 🛡️ ESPERANDO RESULTADO DEL QUALITY GATE"
+                echo "========================================="
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-        stage('Package') {
+        stage('📦 Docker Package') {
             steps {
                 dir('notifications-service') {
+                    echo "========================================="
+                    echo " 📦 CONSTRUYENDO Y SUBIENDO IMAGEN DOCKER"
+                    echo "========================================="
                     script {
                         def imageName = "localhost:5000/notifications-service"
                         def imageTag = "${env.BUILD_NUMBER}"
@@ -61,7 +74,7 @@ pipeline {
                 }
             }
         }
-        stage('E2E Tests') {
+        stage('🎭 BDD E2E Tests') {
             environment {
                 EMPLOYEES_URL = 'http://employees-service:8080'
                 DEPARTMENTS_URL = 'http://departments-service:8081'
@@ -70,7 +83,9 @@ pipeline {
                 PROFILES_URL = 'http://profiles-service:8083'
             }
             steps {
-                echo "Corriendo pruebas E2E contra los servicios locales..."
+                echo "========================================="
+                echo " 🎭 CORRIENDO PRUEBAS E2E (CUCUMBER BDD)"
+                echo "========================================="
                 dir('e2e-tests') {
                     sh '''
                     npm install

@@ -7,26 +7,33 @@ pipeline {
         SCANNER_HOME = tool 'SonarScanner'
     }
     stages {
-        stage('Build') {
+        stage('🏗️ Build & Install') {
             steps {
                 dir('employees-service') {
-                    echo "Instalando dependencias y compilando..."
+                    echo "========================================="
+                    echo " 🏗️ INSTALANDO DEPENDENCIAS Y COMPILANDO"
+                    echo "========================================="
                     sh 'npm install'
                     sh 'npm run build'
                 }
             }
         }
-        stage('Test & Coverage') {
+        stage('🧪 Unit Tests & Coverage') {
             steps {
                 dir('employees-service') {
-                    echo "Ejecutando pruebas y generando cobertura..."
+                    echo "========================================="
+                    echo " 🧪 EJECUTANDO PRUEBAS UNITARIAS Y COBERTURA"
+                    echo "========================================="
                     sh 'npm run test:cov'
                 }
             }
         }
-        stage('SonarQube Analysis') {
+        stage('🔍 SonarQube Analysis') {
             steps {
                 dir('employees-service') {
+                    echo "========================================="
+                    echo " 🔍 ENVIANDO ANÁLISIS A SONARQUBE"
+                    echo "========================================="
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
                             sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
@@ -35,17 +42,23 @@ pipeline {
                 }
             }
         }
-        stage('Quality Gate') {
+        stage('🛡️ Quality Gate') {
             steps {
+                echo "========================================="
+                echo " 🛡️ ESPERANDO RESULTADO DEL QUALITY GATE"
+                echo "========================================="
                 timeout(time: 5, unit: 'MINUTES') {
                     // Requiere que el Webhook esté configurado en SonarQube hacia Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-        stage('Package') {
+        stage('📦 Docker Package') {
             steps {
                 dir('employees-service') {
+                    echo "========================================="
+                    echo " 📦 CONSTRUYENDO Y SUBIENDO IMAGEN DOCKER"
+                    echo "========================================="
                     script {
                         def imageName = "localhost:5000/employees-service"
                         def imageTag = "${env.BUILD_NUMBER}"
@@ -56,7 +69,7 @@ pipeline {
                 }
             }
         }
-        stage('E2E Tests') {
+        stage('🎭 BDD E2E Tests') {
             environment {
                 EMPLOYEES_URL = 'http://employees-service:8080'
                 DEPARTMENTS_URL = 'http://departments-service:8081'
@@ -65,7 +78,9 @@ pipeline {
                 PROFILES_URL = 'http://profiles-service:8083'
             }
             steps {
-                echo "Corriendo pruebas E2E contra los servicios locales..."
+                echo "========================================="
+                echo " 🎭 CORRIENDO PRUEBAS E2E (CUCUMBER BDD)"
+                echo "========================================="
                 dir('e2e-tests') {
                     sh 'npm install'
                     sh 'npm test'
