@@ -316,6 +316,9 @@ services:
       - jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/workspace
+    depends_on:
+      sonarqube:
+        condition: service_healthy
     networks:
       - microservices-network
 
@@ -338,6 +341,11 @@ services:
     depends_on:
       sonar-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
     networks:
       - microservices-network
 
