@@ -91,13 +91,19 @@ Este proyecto abarca la resolución de 6 retos técnicos progresivos, culminando
    cd microservices-challenges
    ```
 
-2. **Levantar todos los contenedores:**
+2. **Levantar la Infraestructura CI/CD (Jenkins, SonarQube, Registry):**
+   ```bash
+   docker compose -f docker-compose.ci.yml up -d
+   ```
+   *Esto inicia las herramientas DevOps en su propio entorno.*
+
+3. **Levantar la Aplicación (Microservicios, Broker y Bases de Datos):**
    ```bash
    docker compose up --build -d
    ```
-   *Esto levanta 10 contenedores en total: Broker, 5 Bases de Datos, 5 Microservicios, y las herramientas de CI/CD (Jenkins, SonarQube).*
+   *Ambos archivos de despliegue comparten la misma red, permitiendo que las pruebas E2E desde Jenkins accedan a la app.*
 
-3. **Verificar el estado:**
+4. **Verificar el estado:**
    ```bash
    docker compose ps
    ```
@@ -170,6 +176,14 @@ npm test
 
 Se ha implementado un pipeline completo de Integración Continua que intercepta los cambios en el código, ejecuta pruebas, valida la calidad y empaqueta las imágenes listas para producción.
 
+### 🚀 Separación de Entornos (Infraestructura vs. Aplicación)
+
+Para preparar el proyecto hacia un entorno de producción real, la infraestructura de CI/CD se ha separado físicamente de los servicios de la aplicación:
+- **`docker-compose.ci.yml`**: Contiene exclusivamente Jenkins, SonarQube, la base de datos de Sonar y el Docker Registry local (`:5000`).
+- **`docker-compose.yml`**: Contiene únicamente la aplicación (microservicios, RabbitMQ y PostgreSQL).
+
+Esta arquitectura modular permite reiniciar o probar las herramientas de automatización de forma aislada. Para más detalles técnicos, consulta la guía [Estrategia de Despliegue en Producción](./docs/deployment_strategy.md).
+
 ### 🛠️ Herramientas
 1. **Jenkins:** Orquestador principal de pipelines. Configurado automáticamente vía **JCasC** y **Job DSL** (Sin wizard inicial, sin instalación manual de plugins).
 2. **SonarQube:** Análisis de seguridad, cobertura y deuda técnica (Quality Gate).
@@ -205,7 +219,8 @@ En Jenkins ya existen dos pipelines (`employees-service-pipeline` y `notificatio
 - 🟥 **Rojo:** Se bloquea el paso a producción. Revisa los logs de la etapa específica fallida (ej. Quality Gate rechazado por falta de tests).
 
 *(Coloca aquí tu captura del pipeline exitoso)*
-![Pipeline Exitoso Jenkins](./docs/pipeline_success.png)
+![Employees-service Pipeline Exitoso Jenkins](./docs/employees-service-pipeline.png)
+![Notifications-service Pipeline Exitoso Jenkins](./docs/notifications-service-pipeline.png)
 
 ---
 
