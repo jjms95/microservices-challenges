@@ -1,4 +1,18 @@
 services:
+  jenkins-docker:
+    image: docker:dind
+    container_name: jenkins-docker
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    command: ["--insecure-registry", "registry:5000"]
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - dind-certs-ca:/certs/ca
+      - dind-certs-client:/certs/client
+    networks:
+      - microservices-network
+
   sonar-db:
     image: postgres:16-alpine
     container_name: sonar-db
@@ -26,9 +40,13 @@ services:
     ports:
       - "8086:8080"
       - "50000:50000"
+    environment:
+      DOCKER_HOST: tcp://jenkins-docker:2376
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: 1
     volumes:
       - jenkins_data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
+      - dind-certs-client:/certs/client:ro
       - ./:/workspace
     depends_on:
       sonarqube:
@@ -81,6 +99,8 @@ volumes:
   sonarqube_logs:
   sonarqube_extensions:
   registry_data:
+  dind-certs-ca:
+  dind-certs-client:
 
 networks:
   microservices-network:

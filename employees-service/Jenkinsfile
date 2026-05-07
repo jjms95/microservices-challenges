@@ -69,7 +69,7 @@ pipeline {
                     echo " 📦 CONSTRUYENDO Y SUBIENDO IMAGEN DOCKER"
                     echo "========================================="
                     script {
-                        def imageName = "localhost:5000/employees-service"
+                        def imageName = "registry:5000/employees-service"
                         def imageTag = "${env.BUILD_NUMBER}"
                         sh "docker build -t ${imageName}:${imageTag} -t ${imageName}:latest ."
                         sh "docker push ${imageName}:${imageTag}"
