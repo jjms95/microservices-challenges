@@ -34,7 +34,7 @@ export class EmployeesService {
 
     async create(createEmployeeDto: CreateEmployeeDto, token?: string): Promise<Employee> {
         const departmentsServiceUrl =
-            process.env.DEPARTMENTS_SERVICE_URL || 'http://localhost:8081';
+            process.env.DEPARTMENTS_SERVICE_URL ?? 'http://localhost:8081';
 
         // ── Circuit Breaker: fast-fail if departments-service is known down ───
         if (!this.circuitBreaker.isAvailable()) {
