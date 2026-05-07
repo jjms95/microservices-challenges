@@ -38,6 +38,12 @@ pipeline {
             }
         }
         stage('🔍 SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'sonarsource/sonar-scanner-cli:5'
+                    reuseNode true
+                }
+            }
             steps {
                 dir('employees-service') {
                     echo "========================================="
@@ -45,7 +51,7 @@ pipeline {
                     echo "========================================="
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
-                            sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
+                            sh "sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
                         }
                     }
                 }
