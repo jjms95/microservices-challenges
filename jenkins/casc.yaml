@@ -12,8 +12,7 @@ unclassified:
     installations:
       - name: "SonarQube"
         serverUrl: "http://sonarqube:9000"
-        # Para un entorno real, usar credentialsId con un token.
-        # Aquí permitiremos el primer análisis sin token estricto o lo configuraremos en Sonar manualmente.
+        credentialsId: "sonar-token"
 
 tool:
   git:
