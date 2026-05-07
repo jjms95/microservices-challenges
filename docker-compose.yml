@@ -126,6 +126,7 @@ services:
   sonar-db:
     image: postgres:16-alpine
     container_name: sonar-db
+    profiles: ["ci"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: sonar
@@ -304,6 +305,7 @@ services:
       context: ./jenkins
       dockerfile: Dockerfile
     container_name: jenkins
+    profiles: ["ci"]
     restart: unless-stopped
     ports:
       - "8086:8080"
@@ -318,6 +320,7 @@ services:
   sonarqube:
     image: sonarqube:10.4.1-community
     container_name: sonarqube
+    profiles: ["ci"]
     restart: unless-stopped
     ports:
       - "9000:9000"
@@ -338,6 +341,7 @@ services:
   registry:
     image: registry:2
     container_name: registry
+    profiles: ["ci"]
     restart: unless-stopped
     ports:
       - "5000:5000"

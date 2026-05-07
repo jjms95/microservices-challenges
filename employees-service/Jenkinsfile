@@ -27,10 +27,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 dir('employees-service') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        withSonarQubeEnv('SonarQube') {
-                            sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
-                        }
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${SCANNER_HOME}/bin/sonar-scanner"
                     }
                 }
             }
@@ -58,19 +56,10 @@ pipeline {
         }
         stage('E2E Tests') {
             steps {
-                echo "Levantando el sistema y corriendo pruebas E2E..."
-                sh 'docker compose up -d'
-                // Esperar a que los servicios estén listos
-                sh 'sleep 30'
+                echo "Corriendo pruebas E2E contra los servicios locales..."
                 dir('e2e-tests') {
                     sh 'npm install'
                     sh 'npm test'
-                }
-            }
-            post {
-                always {
-                    echo "Limpiando entorno E2E..."
-                    sh 'docker compose down'
                 }
             }
         }
