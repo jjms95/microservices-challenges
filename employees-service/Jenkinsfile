@@ -29,7 +29,7 @@ pipeline {
                 dir('employees-service') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
-                            sh "SONAR_SCANNER_OPTS='-Xmx1024m' ${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN -Dsonar.javascript.node.maxspace=2048"
+                            sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.token=\$SONAR_TOKEN"
                         }
                     }
                 }

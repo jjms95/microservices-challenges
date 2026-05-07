@@ -2,8 +2,11 @@
 
 require('dotenv').config({ path: __dirname + '/../../.env' });
 
-const { setWorldConstructor, World } = require('@cucumber/cucumber');
+const { setWorldConstructor, World, setDefaultTimeout } = require('@cucumber/cucumber');
 const axios = require('axios');
+
+// Increase default timeout to 30 seconds for heavy CI environments
+setDefaultTimeout(30000);
 
 /**
  * MUNDO COMPARTIDO (World)
