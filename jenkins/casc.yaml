@@ -20,7 +20,7 @@ unclassified:
     buildWrapperEnabled: true
     installations:
       - name: "SonarQube"
-        serverUrl: "http://localhost:9000"
+        serverUrl: "http://sonarqube:9000"
         credentialsId: "sonar-token"
 
 tool:
