@@ -13,7 +13,7 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins && \
     curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-$(uname -m) -o /usr/local/lib/docker/cli-plugins/docker-compose && \
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Dhudson.model.DirectoryBrowserSupport.CSP="
 ENV CASC_JENKINS_CONFIG="/etc/jenkins/casc.yaml"
 
 # Allow git to clone from local file:// URIs (useful for local development with mounted workspaces)
