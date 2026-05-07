@@ -11,7 +11,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Reusable Bearer token extractor (equivalent to ExtractJwt.fromAuthHeaderAsBearerToken)
-bearer_scheme = HTTPBearer(auto_error=True)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def _decode_token(token: str) -> dict:
@@ -50,12 +50,18 @@ def _decode_token(token: str) -> dict:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
 ) -> dict:
     """
     FastAPI dependency: validates JWT and returns the user dict.
     Equivalent to JwtAuthGuard.
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = _decode_token(credentials.credentials)
     return {"id": payload.get("sub"), "role": payload.get("role")}
 

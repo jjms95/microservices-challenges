@@ -23,7 +23,7 @@ class Notification(Base):
         default=lambda: str(uuid.uuid4()),
         index=True,
     )
-    type: NotificationType = Column(Enum(NotificationType), nullable=False)
+    type: NotificationType = Column(Enum(NotificationType, name="notifications_type_enum"), nullable=False)
     recipient: str = Column(String(255), nullable=False)
     message: str = Column(Text, nullable=False)
     employee_id: str = Column(String(255), nullable=False, name="employeeId")
