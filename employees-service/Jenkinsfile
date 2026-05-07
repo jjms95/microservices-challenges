@@ -9,7 +9,7 @@ pipeline {
                 docker {
                     image 'node:20'
                     reuseNode true
-                    args '--network microservices-challenges_microservices-network'
+                    args '--network host'
                 }
             }
             steps {
@@ -27,7 +27,7 @@ pipeline {
                 docker {
                     image 'node:20'
                     reuseNode true
-                    args '--network microservices-challenges_microservices-network'
+                    args '--network host'
                 }
             }
             steps {
@@ -44,7 +44,7 @@ pipeline {
                 docker {
                     image 'sonarsource/sonar-scanner-cli:5'
                     reuseNode true
-                    args '--network microservices-challenges_microservices-network'
+                    args '--network host'
                 }
             }
             steps {
@@ -92,7 +92,7 @@ pipeline {
                 docker {
                     image 'node:20'
                     reuseNode true
-                    args '--network microservices-challenges_microservices-network'
+                    args '--network host'
                 }
             }
             environment {
