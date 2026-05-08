@@ -144,6 +144,12 @@ services:
     depends_on:
       database-departments:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     networks:
       - microservices-network
 
@@ -171,6 +177,12 @@ services:
         condition: service_started
       message-broker:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     networks:
       - microservices-network
 
@@ -195,6 +207,12 @@ services:
         condition: service_healthy
       message-broker:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     networks:
       - microservices-network
 
@@ -219,6 +237,12 @@ services:
         condition: service_healthy
       message-broker:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     networks:
       - microservices-network
 
@@ -243,6 +267,12 @@ services:
         condition: service_healthy
       message-broker:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     networks:
       - microservices-network
 
@@ -270,11 +300,16 @@ services:
       POLLING_MAX_ATTEMPTS: "15"
       POLLING_INTERVAL_MS: "2000"
     depends_on:
-      - employees-service
-      - departments-service
-      - auth-service
-      - notifications-service
-      - profiles-service
+      employees-service:
+        condition: service_healthy
+      departments-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      notifications-service:
+        condition: service_healthy
+      profiles-service:
+        condition: service_healthy
     networks:
       - microservices-network
 

@@ -46,6 +46,12 @@ app = FastAPI(
 app.include_router(router)
 
 
+# ── Health check ─────────────────────────────────────────────────────────────
+@app.get("/health", tags=["health"], summary="Health check")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
 # ── Startup / Shutdown lifecycle ─────────────────────────────────────────────
 @app.on_event("startup")
 async def on_startup() -> None:

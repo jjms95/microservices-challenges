@@ -61,6 +61,12 @@ jobs:
                   url('https://github.com/jjms95/microservices-challenges.git')
                 }
                 branches('*/main')
+                extensions {
+                  pathRestriction {
+                    includedRegions('employees-service/.*')
+                    excludedRegions('')
+                  }
+                }
               }
             }
             scriptPath('employees-service/Jenkinsfile')
@@ -79,6 +85,12 @@ jobs:
                   url('https://github.com/jjms95/microservices-challenges.git')
                 }
                 branches('*/main')
+                extensions {
+                  pathRestriction {
+                    includedRegions('notifications-service/.*')
+                    excludedRegions('')
+                  }
+                }
               }
             }
             scriptPath('notifications-service/Jenkinsfile')
