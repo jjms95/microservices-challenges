@@ -88,31 +88,28 @@ pipeline {
             }
         }
         stage('🎭 BDD E2E Tests') {
-            agent {
-                docker {
-                    image 'node:20'
-                    reuseNode true
-                    args '--network host'
-                }
-            }
-            environment {
-                EMPLOYEES_URL = 'http://employees-service:8080'
-                DEPARTMENTS_URL = 'http://departments-service:8081'
-                AUTH_URL = 'http://auth-service:8085'
-                NOTIFICATIONS_URL = 'http://notifications-service:8084'
-                PROFILES_URL = 'http://profiles-service:8083'
-            }
             steps {
                 echo "========================================="
-                echo " 🎭 CORRIENDO PRUEBAS E2E (CUCUMBER BDD)"
+                echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFÍMERO"
                 echo "========================================="
-                dir('e2e-tests') {
-                    sh 'npm install'
-                    sh 'npm test'
-                }
+                // Levanta TODO el ecosistema (BDs + RabbitMQ + microservicios + bdd-tests)
+                // --build: construye con el código más reciente del workspace
+                // --abort-on-container-exit: cuando bdd-tests termina, detiene el resto
+                // --exit-code-from bdd-tests: el pipeline hereda el resultado de los tests
+                sh '''
+                docker compose --profile bdd up \
+                    --build \
+                    --abort-on-container-exit \
+                    --exit-code-from bdd-tests
+                '''
             }
             post {
                 always {
+                    echo "========================================="
+                    echo " 🧹 DESTRUYENDO ECOSISTEMA E2E"
+                    echo "========================================="
+                    // Destruye contenedores + volúmenes para dejar entorno limpio
+                    sh 'docker compose --profile bdd down -v --remove-orphans || true'
                     publishHTML(target: [
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
