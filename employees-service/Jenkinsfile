@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         SCANNER_HOME = tool 'SonarScanner'
+        FAILED_STAGE = ''
     }
     stages {
         stage('🏗️ Build & Install') {
@@ -13,6 +14,7 @@ pipeline {
                 }
             }
             steps {
+                script { env.FAILED_STAGE = '🏗️ Build & Install' }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🏗️ INSTALANDO DEPENDENCIAS Y COMPILANDO"
@@ -31,6 +33,7 @@ pipeline {
                 }
             }
             steps {
+                script { env.FAILED_STAGE = '🧪 Unit Tests & Coverage' }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🧪 EJECUTANDO PRUEBAS UNITARIAS Y COBERTURA"
@@ -48,6 +51,7 @@ pipeline {
                 }
             }
             steps {
+                script { env.FAILED_STAGE = '🔍 SonarQube Analysis' }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🔍 ENVIANDO ANÁLISIS A SONARQUBE"
@@ -62,6 +66,7 @@ pipeline {
         }
         stage('🛡️ Quality Gate') {
             steps {
+                script { env.FAILED_STAGE = '🛡️ Quality Gate' }
                 echo "========================================="
                 echo " 🛡️ ESPERANDO RESULTADO DEL QUALITY GATE"
                 echo "========================================="
@@ -73,6 +78,7 @@ pipeline {
         }
         stage('📦 Docker Package') {
             steps {
+                script { env.FAILED_STAGE = '📦 Docker Package' }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 📦 CONSTRUYENDO Y SUBIENDO IMAGEN DOCKER"
@@ -89,6 +95,7 @@ pipeline {
         }
         stage('🎭 BDD E2E Tests') {
             steps {
+                script { env.FAILED_STAGE = '🎭 BDD E2E Tests' }
                 echo "========================================="
                 echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFÍMERO"
                 echo "========================================="
@@ -99,6 +106,7 @@ pipeline {
                 sh '''
                 docker compose --profile bdd up \
                     --build \
+                    --progress=quiet \
                     --abort-on-container-exit \
                     --exit-code-from bdd-tests
                 '''
@@ -124,10 +132,15 @@ pipeline {
     }
     post {
         success {
-            echo "✅ Pipeline completado con éxito"
+            echo "========================================="
+            echo " ✅ PIPELINE COMPLETADO CON ÉXITO"
+            echo "========================================="
         }
         failure {
-            echo "❌ Pipeline fallido"
+            echo "========================================="
+            echo " ❌ PIPELINE FALLIDO"
+            echo " 📍 Etapa con error: ${env.FAILED_STAGE}"
+            echo "========================================="
         }
     }
 }
