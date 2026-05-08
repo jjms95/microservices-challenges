@@ -2,7 +2,6 @@ pipeline {
     agent any
     environment {
         SCANNER_HOME = tool 'SonarScanner'
-        FAILED_STAGE = ''
     }
     stages {
         stage('🏗️ Build & Install') {
@@ -14,7 +13,7 @@ pipeline {
                 }
             }
             steps {
-                script { env.FAILED_STAGE = '🏗️ Build & Install' }
+                script { currentBuild.description = "🏗️ Build & Install" }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🏗️ INSTALANDO DEPENDENCIAS Y COMPILANDO"
@@ -33,7 +32,7 @@ pipeline {
                 }
             }
             steps {
-                script { env.FAILED_STAGE = '🧪 Unit Tests & Coverage' }
+                script { currentBuild.description = "🧪 Unit Tests & Coverage" }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🧪 EJECUTANDO PRUEBAS UNITARIAS Y COBERTURA"
@@ -51,7 +50,7 @@ pipeline {
                 }
             }
             steps {
-                script { env.FAILED_STAGE = '🔍 SonarQube Analysis' }
+                script { currentBuild.description = "🔍 SonarQube Analysis" }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 🔍 ENVIANDO ANÁLISIS A SONARQUBE"
@@ -66,19 +65,18 @@ pipeline {
         }
         stage('🛡️ Quality Gate') {
             steps {
-                script { env.FAILED_STAGE = '🛡️ Quality Gate' }
+                script { currentBuild.description = "🛡️ Quality Gate" }
                 echo "========================================="
                 echo " 🛡️ ESPERANDO RESULTADO DEL QUALITY GATE"
                 echo "========================================="
                 timeout(time: 5, unit: 'MINUTES') {
-                    // Requiere que el Webhook esté configurado en SonarQube hacia Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
         stage('📦 Docker Package') {
             steps {
-                script { env.FAILED_STAGE = '📦 Docker Package' }
+                script { currentBuild.description = "📦 Docker Package" }
                 dir('employees-service') {
                     echo "========================================="
                     echo " 📦 CONSTRUYENDO Y SUBIENDO IMAGEN DOCKER"
@@ -95,18 +93,15 @@ pipeline {
         }
         stage('🎭 BDD E2E Tests') {
             steps {
-                script { env.FAILED_STAGE = '🎭 BDD E2E Tests' }
+                script { currentBuild.description = "🎭 BDD E2E Tests" }
                 echo "========================================="
-                echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFÍMERO"
+                echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFIMERO"
                 echo "========================================="
-                // Levanta TODO el ecosistema (BDs + RabbitMQ + microservicios + bdd-tests)
-                // --build: construye con el código más reciente del workspace
-                // --abort-on-container-exit: cuando bdd-tests termina, detiene el resto
-                // --exit-code-from bdd-tests: el pipeline hereda el resultado de los tests
+                // Limpiar contenedores huerfanos de ejecuciones anteriores fallidas
+                sh 'docker compose --profile bdd down -v --remove-orphans || true'
                 sh '''
                 docker compose --profile bdd up \
                     --build \
-                    --progress=quiet \
                     --abort-on-container-exit \
                     --exit-code-from bdd-tests
                 '''
@@ -114,9 +109,8 @@ pipeline {
             post {
                 always {
                     echo "========================================="
-                    echo " 🧹 DESTRUYENDO ECOSISTEMA E2E"
+                    echo " DESTRUYENDO ECOSISTEMA E2E"
                     echo "========================================="
-                    // Destruye contenedores + volúmenes para dejar entorno limpio
                     sh 'docker compose --profile bdd down -v --remove-orphans || true'
                     publishHTML(target: [
                         allowMissing: true,
@@ -132,14 +126,15 @@ pipeline {
     }
     post {
         success {
+            script { currentBuild.description = null }
             echo "========================================="
-            echo " ✅ PIPELINE COMPLETADO CON ÉXITO"
+            echo " PIPELINE COMPLETADO CON EXITO"
             echo "========================================="
         }
         failure {
             echo "========================================="
-            echo " ❌ PIPELINE FALLIDO"
-            echo " 📍 Etapa con error: ${env.FAILED_STAGE}"
+            echo " PIPELINE FALLIDO"
+            echo " Etapa con error: ${currentBuild.description}"
             echo "========================================="
         }
     }
