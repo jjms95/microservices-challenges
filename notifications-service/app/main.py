@@ -1,6 +1,4 @@
 """
-Application entry point — equivalent to NestJS main.ts bootstrap().
-
 Responsibilities:
   - Creates all DB tables (synchronize: true equivalent)
   - Mounts the /notifications router
