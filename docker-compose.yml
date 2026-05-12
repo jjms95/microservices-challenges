@@ -281,6 +281,8 @@ services:
     container_name: bdd-tests
     profiles:
       - bdd
+    volumes:
+      - ./e2e-tests/reports:/app/reports
     environment:
       EMPLOYEES_URL: http://employees-service:8080
       DEPARTMENTS_URL: http://departments-service:8081

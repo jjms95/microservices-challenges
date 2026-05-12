@@ -128,7 +128,7 @@ pipeline {
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
-                        reportDir: 'e2e-tests',
+                        reportDir: 'e2e-tests/reports',
                         reportFiles: 'cucumber-report.html',
                         reportName: 'BDD E2E Report'
                     ])
@@ -142,6 +142,8 @@ pipeline {
             echo "========================================="
             echo " PIPELINE COMPLETADO CON EXITO"
             echo "========================================="
+            echo "📊 SonarQube Report: http://localhost:9000/dashboard?id=employees-service"
+            echo "📝 BDD E2E Report: ${env.BUILD_URL}BDD_20E2E_20Report/"
         }
         failure {
             echo "========================================="
