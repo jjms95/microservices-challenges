@@ -5,6 +5,8 @@ import { EmployeesModule } from './employees/employees.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { Employee } from './employees/entities/employee.entity';
 import { SecurityModule } from './security/security.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -27,5 +29,7 @@ import { SecurityModule } from './security/security.module';
     EmployeesModule,
     SecurityModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule { }
