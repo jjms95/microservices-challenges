@@ -29,7 +29,8 @@ RUN jenkins-plugin-cli --plugins \
     "jacoco" \
     "htmlpublisher" \
     "nodejs" \
-    "job-dsl"
+    "job-dsl" \
+    "lockable-resources"
 
 RUN mkdir -p /etc/jenkins
 COPY casc.yaml /etc/jenkins/casc.yaml

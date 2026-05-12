@@ -46,7 +46,7 @@ pipeline {
                 docker {
                     image 'sonarsource/sonar-scanner-cli:5'
                     reuseNode true
-                    args '--network host'
+                    args "--network host --entrypoint=''"
                 }
             }
             steps {
@@ -97,23 +97,26 @@ pipeline {
                 echo "========================================="
                 echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFIMERO"
                 echo "========================================="
-                // Pre-cleanup: fuerza la eliminación de contenedores huérfanos por nombre
-                // Necesario porque --profile bdd down no siempre limpia las BDs y servicios de infraestructura
-                sh '''
-                docker compose --profile bdd down -v --remove-orphans 2>/dev/null || true
-                docker rm -f \
-                    database-employees database-departments database-notifications \
-                    database-profiles database-auth message-broker \
-                    employees-service departments-service notifications-service \
-                    profiles-service auth-service bdd-tests \
-                    2>/dev/null || true
-                '''
-                sh '''
-                docker compose --profile bdd up \
-                    --build \
-                    --abort-on-container-exit \
-                    --exit-code-from bdd-tests
-                '''
+                // Lock global: solo un pipeline puede ejecutar E2E a la vez
+                // Evita conflictos de nombres de contenedores entre pipelines concurrentes
+                lock('e2e-ecosystem') {
+                    // Pre-cleanup: fuerza la eliminación de contenedores huérfanos por nombre
+                    sh '''
+                    docker compose --profile bdd down -v --remove-orphans 2>/dev/null || true
+                    docker rm -f \
+                        database-employees database-departments database-notifications \
+                        database-profiles database-auth message-broker \
+                        employees-service departments-service notifications-service \
+                        profiles-service auth-service bdd-tests \
+                        2>/dev/null || true
+                    '''
+                    sh '''
+                    docker compose --profile bdd up \
+                        --build \
+                        --abort-on-container-exit \
+                        --exit-code-from bdd-tests
+                    '''
+                }
             }
             post {
                 always {
