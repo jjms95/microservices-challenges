@@ -10,6 +10,13 @@ services:
       - jenkins_data:/var/jenkins_home
       - dind-certs-ca:/certs/ca
       - dind-certs-client:/certs/client
+    healthcheck:
+      # Espera a que DinD tenga los certificados TLS y acepte conexiones
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     networks:
       - microservices-network
 
@@ -49,6 +56,8 @@ services:
       - dind-certs-client:/certs/client:ro
       - ./:/workspace
     depends_on:
+      docker:
+        condition: service_healthy
       sonarqube:
         condition: service_healthy
     networks:

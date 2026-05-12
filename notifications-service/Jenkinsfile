@@ -101,8 +101,17 @@ pipeline {
                 echo "========================================="
                 echo " 🎭 LEVANTANDO ECOSISTEMA E2E EFIMERO"
                 echo "========================================="
-                // Limpiar contenedores huerfanos de ejecuciones anteriores fallidas
-                sh 'docker compose --profile bdd down -v --remove-orphans || true'
+                // Pre-cleanup: fuerza la eliminación de contenedores huérfanos por nombre
+                // Necesario porque --profile bdd down no siempre limpia las BDs y servicios de infraestructura
+                sh '''
+                docker compose --profile bdd down -v --remove-orphans 2>/dev/null || true
+                docker rm -f \
+                    database-employees database-departments database-notifications \
+                    database-profiles database-auth message-broker \
+                    employees-service departments-service notifications-service \
+                    profiles-service auth-service bdd-tests \
+                    2>/dev/null || true
+                '''
                 sh '''
                 docker compose --profile bdd up \
                     --build \
