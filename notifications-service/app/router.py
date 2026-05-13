@@ -67,3 +67,21 @@ async def find_by_employee_id(
 ) -> List[NotificationOut]:
     svc = NotificationsService(db)
     return await svc.find_by_employee_id(employee_id)
+
+@router.delete(
+    "",
+    summary="Clear all notifications",
+    description="Deletes all recorded notifications. Only accessible by ADMIN.",
+    responses={
+        200: {"description": "Number of deleted notifications."},
+        401: {"description": "Missing or invalid JWT token."},
+        403: {"description": "Insufficient role permissions."},
+    },
+)
+async def delete_all(
+    db: AsyncSession = Depends(get_db),
+    _user: dict = Depends(require_roles("ADMIN")),
+) -> dict:
+    svc = NotificationsService(db)
+    count = await svc.delete_all()
+    return {"deleted": count}

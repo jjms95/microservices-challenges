@@ -3,7 +3,7 @@ import logging
 import uuid
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Notification, NotificationType
@@ -71,3 +71,8 @@ class NotificationsService:
             .order_by(Notification.sent_at.desc())
         )
         return list(result.scalars().all())
+
+    async def delete_all(self) -> int:
+        result = await self.db.execute(delete(Notification))
+        await self.db.commit()
+        return result.rowcount
