@@ -6,7 +6,7 @@ import {
     Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, retry, timer, throwError } from 'rxjs';
 import { AxiosError } from 'axios';
@@ -112,7 +112,7 @@ export class EmployeesService {
         if (name && email) {
             this.logger.debug(`Filtering by both name (${name}) and email (${email})`);
             queryBuilder.where('employee.name ILIKE :name', { name: `%${name}%` })
-                        .andWhere('employee.email ILIKE :email', { email: `%${email}%` });
+                .andWhere('employee.email ILIKE :email', { email: `%${email}%` });
         } else if (name) {
             this.logger.debug(`Filtering by name only (${name})`);
             queryBuilder.where('employee.name ILIKE :name', { name: `%${name}%` });
