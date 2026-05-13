@@ -104,23 +104,32 @@ export class EmployeesService {
     }
 
     async findAll(query: FindEmployeesQueryDto): Promise<PaginatedEmployeesDto> {
+        this.logger.debug(`Executing findAll with query params: ${JSON.stringify(query)}`);
         const { name, email, page = 1, limit = 10 } = query;
 
-        const where: Record<string, unknown>[] = [];
+        const queryBuilder = this.employeesRepository.createQueryBuilder('employee');
+
         if (name && email) {
-            where.push({ name: ILike(`%${name}%`), email: ILike(`%${email}%`) });
+            this.logger.debug(`Filtering by both name (${name}) and email (${email})`);
+            queryBuilder.where('employee.name ILIKE :name', { name: `%${name}%` })
+                        .andWhere('employee.email ILIKE :email', { email: `%${email}%` });
         } else if (name) {
-            where.push({ name: ILike(`%${name}%`) });
+            this.logger.debug(`Filtering by name only (${name})`);
+            queryBuilder.where('employee.name ILIKE :name', { name: `%${name}%` });
         } else if (email) {
-            where.push({ email: ILike(`%${email}%`) });
+            this.logger.debug(`Filtering by email only (${email})`);
+            queryBuilder.where('employee.email ILIKE :email', { email: `%${email}%` });
+        } else {
+            this.logger.debug(`No filters applied, fetching all employees`);
         }
 
-        const [data, totalItems] = await this.employeesRepository.findAndCount({
-            where: where.length > 0 ? where : undefined,
-            skip: (page - 1) * limit,
-            take: limit,
-            order: { name: 'ASC' },
-        });
+        queryBuilder.orderBy('employee.name', 'ASC');
+        queryBuilder.skip((page - 1) * limit);
+        queryBuilder.take(limit);
+
+        const [data, totalItems] = await queryBuilder.getManyAndCount();
+
+        this.logger.debug(`Found ${totalItems} employees total. Returning page ${page} with ${data.length} items`);
 
         return {
             data,
