@@ -224,6 +224,83 @@ En Jenkins ya existen dos pipelines (`employees-service-pipeline` y `notificatio
 
 ---
 
+---
+
+## 🔍 Reto 7: Observabilidad y Monitoreo del Ecosistema
+
+En este reto se instrumenta el ecosistema para transformar la "caja negra" en un sistema transparente, permitiendo responder preguntas críticas sobre salud, rendimiento y trazabilidad.
+
+### 📚 Investigación de Conceptos
+
+#### 1. Los Tres Pilares de la Observabilidad
+- **Métricas:** Datos numéricos agregados sobre el rendimiento (ej. uso de CPU, tasa de errores). Permiten saber *si algo está fallando*.
+- **Logs:** Registros detallados de eventos discretos en el tiempo (ej. "Usuario X inició sesión"). Permiten saber *qué sucedió exactamente*.
+- **Trazas:** Seguimiento del flujo de una petición a través de múltiples servicios. Permiten identificar *dónde está el cuello de botella*.
+
+#### 2. Modelo Pull vs. Push
+- **Pull (Prometheus):** El servidor de monitoreo solicita activamente las métricas a los servicios (scraping). Es más fácil de configurar y evita saturar el servidor si un servicio envía demasiados datos.
+- **Push (Zipkin/Loki):** Los servicios envían proactivamente sus datos (trazas o logs) al colector. Es ideal para eventos de corta duración o donde el servidor no tiene visibilidad directa del servicio.
+
+#### 3. OpenTelemetry (OTel)
+Estándar abierto de la CNCF que proporciona APIs y SDKs agnósticos al lenguaje para generar telemetría. Permite cambiar de herramienta de análisis (ej. de Zipkin a Jaeger) sin modificar el código de los microservicios.
+
+#### 4. W3C Trace Context
+Estándar de cabeceras HTTP (`traceparent`) que asegura que el ID de una traza se propague correctamente entre servicios, permitiendo correlacionar logs y trazas de distintos lenguajes.
+
+### 📐 Arquitectura de Observabilidad
+
+```mermaid
+graph TD
+    subgraph "Microservicios de Negocio"
+        GW[API Gateway]
+        ES[Employees Service]
+        DS[Departments Service]
+        AS[Auth Service]
+        NS[Notifications Service]
+    end
+
+    subgraph "Stack de Observabilidad"
+        PR[Prometheus :9090]
+        GR[Grafana :3000]
+        LK[Loki :3100]
+        PT[Promtail]
+        ZP[Zipkin :9411]
+    end
+
+    %% Métricas (Pull)
+    PR -- Scrape /metrics --> GW
+    PR -- Scrape /metrics --> ES
+    PR -- Scrape /metrics --> DS
+    PR -- Scrape /metrics --> AS
+    PR -- Scrape /metrics --> NS
+
+    %% Trazas (Push)
+    GW -- Push Traces --> ZP
+    ES -- Push Traces --> ZP
+    DS -- Push Traces --> ZP
+    AS -- Push Traces --> ZP
+    NS -- Push Traces --> ZP
+
+    %% Logs (Agente)
+    PT -- Discover & Read --> GW
+    PT -- Discover & Read --> ES
+    PT -- Send to --> LK
+
+    %% Visualización
+    GR -- Query Metrics --> PR
+    GR -- Query Logs --> LK
+    GR -- View Traces --> ZP
+
+    %% Alertas
+    GR -- Alert --> DC[Discord Webhook]
+```
+
+### 🛠️ Decisiones de Diseño
+- **Servidor de Trazas:** Se eligió **Zipkin** por su ligereza y facilidad de integración inicial, cumpliendo con los requisitos de trazabilidad distribuida.
+- **Canal de Alertas:** Se utilizará un **Webhook de Discord** para recibir notificaciones proactivas sobre fallos en el sistema.
+
+---
+
 ## 🛑 Comandos Útiles
 
 Si cuentas con `make` instalado, tienes accesos directos convenientes en el proyecto:

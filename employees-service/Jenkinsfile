@@ -108,6 +108,7 @@ pipeline {
                         database-profiles database-auth message-broker \
                         employees-service departments-service notifications-service \
                         profiles-service auth-service bdd-tests \
+                        prometheus grafana loki promtail zipkin \
                         2>/dev/null || true
                     '''
                     sh '''

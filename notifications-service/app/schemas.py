@@ -16,6 +16,10 @@ class NotificationOut(BaseModel):
     recipient: str = Field(example="john.doe@company.com")
     message: str = Field(example="Welcome John Doe! Your account has been created.")
     employee_id: str = Field(alias="employee_id", example="uuid-employee-xxxx")
+    # FIX: Se agregó reset_token al schema de respuesta para exponer el campo que se
+    # añadió al modelo Notification. Permite que la API devuelva el token de recuperación
+    # de contraseña, manteniendo paridad con la entidad original de NestJS/TypeORM.
+    reset_token: Optional[str] = Field(None, alias="resetToken")
     sent_at: datetime = Field(alias="sent_at")
 
     model_config = {

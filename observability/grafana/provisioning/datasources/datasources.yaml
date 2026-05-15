@@ -1,0 +1,25 @@
+# DOC: Aprovisionamiento automático de fuentes de datos en Grafana (Reto 7)
+# Permite que Grafana reconozca a Prometheus y Loki al iniciar el contenedor.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+
+  # FIX: Se incluye Zipkin para la visualización de trazas distribuidas.
+  - name: Zipkin
+    type: zipkin
+    access: proxy
+    url: http://zipkin:9411
+    editable: true

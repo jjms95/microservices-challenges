@@ -10,8 +10,10 @@ import asyncio
 import logging
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.openapi.utils import get_openapi
+from prometheus_fastapi_instrumentator import Instrumentator
+from sqlalchemy import text
 
 from app.config import settings
 from app.consumer import start_consumer
@@ -40,14 +42,40 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# FIX: Instrumentación con Prometheus para el Reto 7.
+# Expone el endpoint /metrics automáticamente.
+Instrumentator().instrument(app).expose(app)
+
 # Mount the notifications router
 app.include_router(router)
 
 
 # ── Health check ─────────────────────────────────────────────────────────────
 @app.get("/health", tags=["health"], summary="Health check")
-async def health() -> dict:
-    return {"status": "ok"}
+async def health(response: Response) -> dict:
+    """DOC: Implementación de health check para el Reto 7.
+    Verifica la conectividad con la base de datos PostgreSQL.
+    """
+    db_status = "UP"
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("Health check failed: Database is DOWN (%s)", exc)
+        db_status = "DOWN"
+
+    # Determinar estado general del servicio
+    is_healthy = db_status == "UP"
+    if not is_healthy:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {
+        "status": "UP" if is_healthy else "DOWN",
+        "service": "notifications-service",
+        "checks": {
+            "database": db_status
+        }
+    }
 
 
 # ── Startup / Shutdown lifecycle ─────────────────────────────────────────────

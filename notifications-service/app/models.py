@@ -12,6 +12,10 @@ from app.database import Base
 class NotificationType(str, enum.Enum):
     WELCOME = "WELCOME"
     OFFBOARDING = "OFFBOARDING"
+    # FIX: Se agregó PASSWORD_RECOVERY, que faltaba en la reescritura de NestJS a Python.
+    # El auth-service emite eventos "user.created" y "user.recovered" que requieren este tipo
+    # para persistir las notificaciones de recuperación de contraseña en la base de datos.
+    PASSWORD_RECOVERY = "PASSWORD_RECOVERY"
 
 
 class Notification(Base):
@@ -27,6 +31,10 @@ class Notification(Base):
     recipient: str = Column(String(255), nullable=False)
     message: str = Column(Text, nullable=False)
     employee_id: str = Column(String(255), nullable=False, name="employeeId")
+    # FIX: Se agregó reset_token para almacenar el token de recuperación de contraseña.
+    # Corresponde a la columna "resetToken" que existía en la entidad TypeORM original
+    # pero no fue incluida en la migración a SQLAlchemy.
+    reset_token: str = Column(String(512), nullable=True, name="resetToken")
     sent_at: datetime = Column(
         DateTime(timezone=True),
         server_default=func.now(),

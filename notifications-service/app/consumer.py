@@ -43,13 +43,19 @@ async def _handle_employee_deleted(data: dict) -> None:
 
 
 async def _handle_user_event(data: dict, event_name: str) -> None:
+    """Procesa eventos de usuario (user.created / user.recovered) del auth-service.
+
+    FIX: Anteriormente esta función solo imprimía un log con el mensaje de
+    recuperación de contraseña sin persistir nada en la base de datos. Se
+    actualizó para delegar al método NotificationsService.handle_user_event(),
+    que crea un registro Notification de tipo PASSWORD_RECOVERY, replicando
+    el comportamiento del consumer original de NestJS.
+    """
     payload = UserEventPayload.model_validate(data)
-    logger.info(
-        "[NOTIFICACIÓN] Tipo: SEGURIDAD | Para: %s | Mensaje: Para establecer o recuperar "
-        "su contraseña, utilice este enlace: https://app.empresa.com/reset?token=%s",
-        payload.email,
-        payload.token,
-    )
+    logger.info("[EVENT RECEIVED] %s | id/email: %s", event_name, payload.email)
+    async with AsyncSessionLocal() as db:
+        svc = NotificationsService(db)
+        await svc.handle_user_event(payload, event_name)
 
 
 # ── Dispatch table (event pattern → handler) ────────────────────────────────
