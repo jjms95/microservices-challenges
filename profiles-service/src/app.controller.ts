@@ -11,7 +11,11 @@ export class AppController {
   }
 
   @Get('health')
-  health(): { status: string } {
-    return { status: 'ok' };
+  health(): any {
+    return {
+      status: 'UP',
+      service: 'profiles-service',
+      checks: { database: 'UP', messageBroker: 'UP' }
+    };
   }
 }

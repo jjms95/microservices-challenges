@@ -126,6 +126,30 @@ services:
   # ─────────────────────────────────────────────
   #  Microservices
   # ─────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      - employees-service
+      - departments-service
+      - profiles-service
+      - notifications-service
+      - auth-service
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservices-network
+
   departments-service:
     build:
       context: ./departments-service
@@ -264,7 +288,7 @@ services:
       message-broker:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 8

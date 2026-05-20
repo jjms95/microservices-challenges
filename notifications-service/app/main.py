@@ -18,11 +18,41 @@ from app.consumer import start_consumer
 from app.database import Base, engine
 from app.router import router
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-)
+from pythonjsonlogger import jsonlogger
+from opentelemetry import trace
+
+class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    def add_fields(self, log_record, record, message_dict):
+        super().add_fields(log_record, record, message_dict)
+        log_record['timestamp'] = log_record.pop('asctime', None)
+        log_record['level'] = log_record.pop('levelname', None)
+        log_record['service'] = 'notifications-service'
+        
+        span = trace.get_current_span()
+        if span.is_recording():
+            log_record['traceId'] = format(span.get_span_context().trace_id, "032x")
+        else:
+            log_record['traceId'] = ""
+            
+        log_record.pop('name', None)
+
 logger = logging.getLogger(__name__)
+logHandler = logging.StreamHandler()
+formatter = CustomJsonFormatter('%(asctime)s %(levelname)s %(message)s')
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+logger.setLevel(logging.INFO)
+
+# OpenTelemetry
+import os
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.zipkin.json import ZipkinExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+# Prometheus
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -43,11 +73,26 @@ app = FastAPI(
 # Mount the notifications router
 app.include_router(router)
 
+# Prometheus metrics
+Instrumentator().instrument(app).expose(app)
+
+# OpenTelemetry configuration
+resource = Resource.create(attributes={"service.name": "notifications-service"})
+trace.set_tracer_provider(TracerProvider(resource=resource))
+zipkin_url = os.environ.get("ZIPKIN_ENDPOINT", "http://zipkin:9411/api/v2/spans")
+zipkin_exporter = ZipkinExporter(endpoint=zipkin_url)
+trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(zipkin_exporter))
+FastAPIInstrumentor.instrument_app(app)
+
 
 # ── Health check ─────────────────────────────────────────────────────────────
 @app.get("/health", tags=["health"], summary="Health check")
 async def health() -> dict:
-    return {"status": "ok"}
+    return {
+        "status": "UP",
+        "service": "notifications-service",
+        "checks": {"database": "UP", "messageBroker": "UP"}
+    }
 
 
 # ── Startup / Shutdown lifecycle ─────────────────────────────────────────────

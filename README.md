@@ -218,9 +218,94 @@ En Jenkins ya existen dos pipelines (`employees-service-pipeline` y `notificatio
 - 🟩 **Verde:** El código es seguro, las pruebas pasaron, y se construyó una imagen Docker lista para ser desplegada en producción.
 - 🟥 **Rojo:** Se bloquea el paso a producción. Revisa los logs de la etapa específica fallida (ej. Quality Gate rechazado por falta de tests).
 
-*(Coloca aquí tu captura del pipeline exitoso)*
 ![Employees-service Pipeline Exitoso Jenkins](./docs/employees-service-pipeline.png)
 ![Notifications-service Pipeline Exitoso Jenkins](./docs/notifications-service-pipeline.png)
+
+---
+
+## 📊 Observabilidad y Monitoreo (Reto 7)
+
+Para evitar que el sistema sea una "caja negra", se implementó un Stack Completo de Observabilidad con el fin de tener telemetría detallada de todo el ecosistema.
+
+### 🧩 Diversidad de Lenguajes (Requisito Especial)
+Para probar la capacidad de las herramientas agnósticas (como OpenTelemetry), el sistema ahora está compuesto por **4 lenguajes de programación distintos**:
+- **API Gateway (Go):** Nuevo punto de entrada desarrollado en Golang (`api-gateway`). Utiliza `prometheus/client_golang` para métricas y `go.opentelemetry.io` para trazabilidad.
+- **Auth Service (Java):** Migrado completamente de NestJS a Spring Boot (`auth-service`). Utiliza `micrometer-registry-prometheus` para métricas y `micrometer-tracing-bridge-otel` junto con `opentelemetry-exporter-zipkin` nativo de Spring Boot 3 para trazabilidad.
+- **Notifications Service (Python):** Desarrollado en FastAPI (`notifications-service`). Utiliza `prometheus-client` para métricas y las librerías oficiales `opentelemetry-api`, `opentelemetry-sdk` y `opentelemetry-instrumentation-fastapi` para trazabilidad.
+- **Employees, Departments, Profiles (TypeScript):** Mantenidos en NestJS/Node.js. Utilizan `prom-client` para métricas y `@opentelemetry/sdk-node` con `@opentelemetry/exporter-zipkin` para instrumentación automática de trazabilidad.
+
+### 📐 Arquitectura de Observabilidad
+- **Métricas:** `Prometheus` raspa (modelo *Pull*) los endpoints `/metrics` (y `/actuator/prometheus` en Java) de todos los contenedores cada 15s.
+- **Trazas:** Todos los servicios usan `OpenTelemetry` con propagación `W3C Trace Context` exportando asincrónicamente (modelo *Push*) las gráficas de cascada hacia `Zipkin`.
+- **Logs:** Los servicios escupen logs en formato JSON (`winston`, `python-json-logger`, `logback`). `Promtail` los lee directamente del socket de Docker y los consolida en `Loki`.
+- **Dashboards y Alertas:** `Grafana` consolida todos estos Data Sources y provisiona un Dashboard inicial, con alertas conectadas vía **MailHog (SMTP)**.
+
+
+```mermaid
+graph TD
+    subgraph "Microservicios de Negocio"
+        GW[API Gateway]
+        ES[Employees Service]
+        DS[Departments Service]
+        AS[Auth Service]
+        NS[Notifications Service]
+    end
+
+    subgraph "Stack de Observabilidad"
+        PR[Prometheus :9090]
+        GR[Grafana :3000]
+        LK[Loki :3100]
+        PT[Promtail]
+        ZP[Zipkin :9411]
+    end
+
+    %% Métricas (Pull)
+    PR -- Scrape /metrics --> GW
+    PR -- Scrape /metrics --> ES
+    PR -- Scrape /metrics --> DS
+    PR -- Scrape /metrics --> AS
+    PR -- Scrape /metrics --> NS
+
+    %% Trazas (Push)
+    GW -- Push Traces --> ZP
+    ES -- Push Traces --> ZP
+    DS -- Push Traces --> ZP
+    AS -- Push Traces --> ZP
+    NS -- Push Traces --> ZP
+
+    %% Logs (Agente)
+    PT -- Discover & Read --> GW
+    PT -- Discover & Read --> ES
+    PT -- Send to --> LK
+
+    %% Visualización
+    GR -- Query Metrics --> PR
+    GR -- Query Logs --> LK
+    GR -- View Traces --> ZP
+
+    %% Alertas
+    GR -- Alert --> MH[MailHog :8025]
+```
+
+### ❓ Respuestas al Taller y Pruebas de Caos
+**1. Conceptos y Herramientas**
+- **Pull vs Push:** Prometheus usa *Pull* (evita saturar un servicio que ya está sufriendo para empujar métricas). Zipkin usa *Push* porque las trazas son eventos discretos que suceden constantemente por cada petición HTTP.
+- **OpenTelemetry & W3C Trace Context:** OTel es el estándar agnóstico de la CNCF para instrumentación. El W3C Trace Context garantiza que cuando el API Gateway (Go) llame a Employees (NestJS), el ID de la traza viaje en las cabeceras HTTP y no se rompa la cascada.
+- **¿Por qué Zipkin sobre Jaeger?:** Por ligereza y simplicidad en el entorno Docker Compose local. Jaeger muchas veces demanda dependencias adicionales para persistencia no efímera, mientras Zipkin provee todo "out of the box" en un solo contenedor base.
+
+**2. Pruebas de Caos: Simulaciones de Fallos**
+Para verificar la proactividad del sistema, se configuraron alertas usando el canal **Email** gestionado localmente por **MailHog**.
+- **Configuración del Canal:** Grafana se enlazó mediante sus variables de entorno SMTP (`GF_SMTP_ENABLED`, `GF_SMTP_HOST=mailhog:1025`) y se aprovisionó el receptor de alertas (`contact-points.yml`) apuntando al tipo `email`. Los correos resultantes se pueden auditar en tiempo real a través de la interfaz web de MailHog en `http://localhost:8025`.
+
+- **Prueba A (Caída de Servicio):** Si se ejecuta `docker stop departments-service`, Prometheus detecta en su siguiente ciclo que `up == 0`. Al pasar 1 minuto, Grafana evalúa la regla y dispara un correo electrónico crítico a través de MailHog indicando que el servicio no responde.
+  
+  ![Dashboard mostrando la caída del servicio](./docs/caos-dashboard.png)
+  ![Alerta recibida en MailHog](./docs/caos-alerta.png)
+
+- **Prueba B (Latencia y Análisis en Zipkin):** *"¿Qué servicio tardó más en responder y cómo se identificó?"*
+  - **Respuesta Fundamentada:** Al inducir carga en la creación de un empleado (`POST /empleados`), identificamos usando la gráfica Waterfall de **Zipkin** que el **`employees-service`** acaparó el mayor tiempo total. En la cascada, su *span* fue el más largo porque se quedó bloqueado esperando una validación sincrónica HTTP del `departments-service`. Por el contrario, la creación de perfiles y notificaciones (que viajan por RabbitMQ asincrónicamente) solo sumaron ~5ms al *thread* principal. Todo esto fue visible gracias a que el `traceId` se propagó ininterrumpidamente desde el API Gateway en Go.
+
+  ![Trazas Waterfall en Zipkin](./docs/caos-trazas.png)
 
 ---
 

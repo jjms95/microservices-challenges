@@ -1,14 +1,17 @@
-FROM node:22-alpine
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-COPY package*.json ./
-RUN npm install
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-COPY . .
+FROM eclipse-temurin:21-jre-alpine
 
-RUN npm run build
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8085
 
-CMD ["npm", "run", "start:prod"]
+CMD ["java", "-jar", "app.jar"]

@@ -12,3 +12,10 @@ pytest-asyncio==0.23.8
 aiosqlite==0.20.0
 httpx==0.27.0
 greenlet==3.1.1
+prometheus-fastapi-instrumentator==7.0.0
+opentelemetry-api==1.24.0
+opentelemetry-sdk==1.24.0
+opentelemetry-exporter-zipkin==1.24.0
+opentelemetry-instrumentation-fastapi==0.45b0
+python-json-logger==2.0.7
+setuptools==70.0.0

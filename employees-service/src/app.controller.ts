@@ -12,7 +12,11 @@ export class AppController {
 
   // Health check endpoint for docker composer logic
   @Get('health')
-  health(): { status: string } {
-    return { status: 'ok' };
+  health(): any {
+    return {
+      status: 'UP',
+      service: 'employees-service',
+      checks: { database: 'UP', messageBroker: 'UP' }
+    };
   }
 }

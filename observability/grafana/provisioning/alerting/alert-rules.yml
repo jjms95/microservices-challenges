@@ -1,0 +1,97 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Microservices Alerts
+    folder: Observability
+    interval: 1m
+    rules:
+      - uid: alert_service_down
+        title: Servicio Caído
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            model:
+              expr: up
+              intervalMs: 1000
+              maxDataPoints: 43200
+            relativeTimeRange:
+              from: 60
+              to: 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: $B == 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "El servicio {{ $labels.job }} está caído."
+          description: "Prometheus no ha podido alcanzar el endpoint de métricas del servicio {{ $labels.job }} por 1 minuto."
+        labels:
+          severity: critical
+
+      - uid: alert_high_latency
+        title: Alta Latencia
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            model:
+              expr: rate(http_server_requests_seconds_sum[2m]) / rate(http_server_requests_seconds_count[2m])
+              intervalMs: 1000
+              maxDataPoints: 43200
+            relativeTimeRange:
+              from: 120
+              to: 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: $B > 2
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: "Alta latencia detectada en {{ $labels.job }}."
+          description: "La latencia promedio del servicio {{ $labels.job }} superó los 2 segundos durante los últimos 2 minutos."
+        labels:
+          severity: warning
