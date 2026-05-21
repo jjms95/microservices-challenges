@@ -11,8 +11,8 @@
       "type": "timeseries",
       "title": "Request Rate",
       "targets": [
-        {"expr": "rate(http_requests_total[1m])", "legendFormat": "{{instance}} ({{job}})", "refId": "A"},
-        {"expr": "rate(http_server_requests_seconds_count[1m])", "legendFormat": "{{instance}} ({{job}})", "refId": "B"}
+        {"expr": "rate(http_requests_total[1m])", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_count[1m])", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "B"}
       ],
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
     },
@@ -20,8 +20,8 @@
       "type": "timeseries",
       "title": "Latency",
       "targets": [
-        {"expr": "rate(http_request_duration_seconds_sum[1m]) / rate(http_request_duration_seconds_count[1m])", "legendFormat": "{{instance}} ({{job}})", "refId": "A"},
-        {"expr": "rate(http_server_requests_seconds_sum[1m]) / rate(http_server_requests_seconds_count[1m])", "legendFormat": "{{instance}} ({{job}})", "refId": "B"}
+        {"expr": "rate(http_request_duration_seconds_sum[1m]) / rate(http_request_duration_seconds_count[1m])", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_sum[1m]) / rate(http_server_requests_seconds_count[1m])", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "B"}
       ],
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
     },
@@ -29,9 +29,9 @@
       "type": "timeseries",
       "title": "Error Rate",
       "targets": [
-        {"expr": "sum by (instance, job) (rate(http_requests_total{status=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} ({{job}})", "refId": "A"},
-        {"expr": "sum by (instance, job) (rate(http_requests_total{code=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} ({{job}})", "refId": "B"},
-        {"expr": "sum by (instance, job) (rate(http_server_requests_seconds_count{status=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} ({{job}})", "refId": "C"}
+        {"expr": "sum by (instance, method, path, uri, handler, status, code) (rate(http_requests_total{status=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "A"},
+        {"expr": "sum by (instance, method, path, uri, handler, status, code) (rate(http_requests_total{code=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "B"},
+        {"expr": "sum by (instance, method, path, uri, handler, status, code) (rate(http_server_requests_seconds_count{status=~\"[45]..\"}[1m]))", "legendFormat": "{{instance}} - {{method}} {{path}}{{uri}}{{handler}} ({{status}}{{code}})", "refId": "C"}
       ],
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
     }
