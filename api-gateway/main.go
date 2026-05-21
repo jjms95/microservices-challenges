@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -90,8 +91,35 @@ func main() {
 	mux.HandleFunc("/health", healthHandler)
 	mux.Handle("/metrics", promhttp.Handler())
 
-	// Wrap root with OTel
+	// Metrics
+	inFlightGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "http_requests_in_flight",
+		Help: "A gauge of requests currently being served.",
+	})
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "A counter for requests to the wrapped handler.",
+		},
+		[]string{"code", "method"},
+	)
+	duration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "A histogram of latencies for requests.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"code", "method"},
+	)
+	prometheus.MustRegister(inFlightGauge, counter, duration)
+
+	// Wrap root with OTel and Prometheus
 	handler := otelhttp.NewHandler(mux, "api-gateway")
+	handler = promhttp.InstrumentHandlerInFlight(inFlightGauge,
+		promhttp.InstrumentHandlerDuration(duration,
+			promhttp.InstrumentHandlerCounter(counter, handler),
+		),
+	)
 
 	port := ":8000"
 	slog.Info("API Gateway listening", "port", port, "service", "api-gateway")

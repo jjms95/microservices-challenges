@@ -14,17 +14,11 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:supersecret2026}")
+    @Value("${jwt.secret}")
     private String secret;
 
     private SecretKey getSigningKey() {
-        // Needs to be at least 256 bits, but the old one was 'supersecret2026'.
-        // To avoid errors with old secret being too short, let's hash it or pad it.
-        String paddedSecret = secret;
-        while (paddedSecret.length() < 32) {
-            paddedSecret += secret;
-        }
-        return Keys.hmacShaKeyFor(paddedSecret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(String subject, Map<String, Object> claims, long expirationMillis) {

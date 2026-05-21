@@ -22,8 +22,10 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.schemas import EmployeeCreatedPayload, EmployeeDeletedPayload, UserEventPayload
 from app.service import NotificationsService
+from opentelemetry import trace, propagate
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 async def _handle_employee_created(data: dict) -> None:
@@ -66,24 +68,42 @@ async def _process_message(message: IncomingMessage) -> None:
     Decode an AMQP message, route it to the correct handler, and ACK/NACK.
     Mirrors the try/catch + channel.ack/channel.nack(false, false) pattern.
     """
+    # Extract OpenTelemetry context from message headers
+    headers = message.headers or {}
+    carrier = {}
+    for k, v in headers.items():
+        if isinstance(v, bytes):
+            carrier[k] = v.decode('utf-8')
+        else:
+            carrier[k] = str(v)
+    
+    ctx = propagate.extract(carrier)
+
     async with message.process(requeue=False):  # auto-nack on exception, no requeue
-        try:
-            body = json.loads(message.body.decode())
-
-            # NestJS wraps the payload under a 'data' key when publishing via RMQ transport
-            pattern = body.get("pattern", "")
-            data = body.get("data", body)  # fallback to raw body for plain publishers
-
-            handler = _HANDLERS.get(pattern)
-            if handler is None:
-                logger.warning("[CONSUMER] Unknown event pattern: %s — ignoring", pattern)
-                return
-
-            await handler(data)
-
-        except Exception as exc:  # noqa: BLE001
-            logger.error("[CONSUMER] Error processing message: %s", exc, exc_info=True)
-            raise  # triggers nack via process() context manager
+        with tracer.start_as_current_span(
+            "process_message",
+            context=ctx,
+            kind=trace.SpanKind.CONSUMER
+        ) as span:
+            try:
+                body = json.loads(message.body.decode())
+    
+                # NestJS wraps the payload under a 'data' key when publishing via RMQ transport
+                pattern = body.get("pattern", "")
+                data = body.get("data", body)  # fallback to raw body for plain publishers
+    
+                handler = _HANDLERS.get(pattern)
+                if handler is None:
+                    logger.warning("[CONSUMER] Unknown event pattern: %s — ignoring", pattern)
+                    return
+    
+                await handler(data)
+    
+            except Exception as exc:  # noqa: BLE001
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR))
+                logger.error("[CONSUMER] Error processing message: %s", exc, exc_info=True)
+                raise  # triggers nack via process() context manager
 
 
 async def start_consumer() -> None:

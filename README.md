@@ -120,7 +120,7 @@ Para hacer peticiones a las APIs protegidas, primero debes obtener un token JWT 
 | **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | `admin` / `admin` |
 | **Jenkins** | [http://localhost:8086](http://localhost:8086) | *Acceso Anónimo (Configurado por JCasC)* |
 | **SonarQube** | [http://localhost:9000](http://localhost:9000) | `admin` / `admin` |
-| **Auth Service (Docs)** | [http://localhost:8085/api/docs](http://localhost:8085/api/docs) | Generación JWT y Login |
+| **Auth Service (Docs)** | [http://localhost:8085/api](http://localhost:8085/api/docs) | Generación JWT y Login |
 | **Employees Service** | [http://localhost:8080/api](http://localhost:8080/api) | CRUD Empleados |
 | **Departments Service** | [http://localhost:8081/api](http://localhost:8081/api) | CRUD Departamentos |
 | **Profiles Service** | [http://localhost:8083/api](http://localhost:8083/api) | Perfiles (Async) |
@@ -289,8 +289,21 @@ graph TD
 
 ### ❓ Respuestas al Taller y Pruebas de Caos
 **1. Conceptos y Herramientas**
-- **Pull vs Push:** Prometheus usa *Pull* (evita saturar un servicio que ya está sufriendo para empujar métricas). Zipkin usa *Push* porque las trazas son eventos discretos que suceden constantemente por cada petición HTTP.
-- **OpenTelemetry & W3C Trace Context:** OTel es el estándar agnóstico de la CNCF para instrumentación. El W3C Trace Context garantiza que cuando el API Gateway (Go) llame a Employees (NestJS), el ID de la traza viaje en las cabeceras HTTP y no se rompa la cascada.
+- **Los Tres Pilares de la Observabilidad:**
+  - **Métricas:** Son datos numéricos agregados que nos indican la salud general del sistema a lo largo del tiempo (ej. uso de CPU, peticiones por segundo, latencia). Nos dicen *cuándo* hay un problema.
+  - **Logs (Registros):** Son mensajes de texto detallados emitidos por nuestras aplicaciones sobre eventos específicos (ej. "Usuario autenticado" o "Fallo de conexión a la BD"). Nos dicen *por qué* ocurrió un problema.
+  - **Trazas:** Representan el viaje completo de una única petición a través de todos los microservicios involucrados. Miden el tiempo invertido en cada servicio para identificar cuellos de botella. Nos dicen *dónde* está el problema.
+- **Rol de cada herramienta implementada (El Stack):**
+  - **Prometheus:** Es una base de datos que recolecta y almacena **métricas**. En palabras simples, es como un supervisor que constantemente interroga a los servicios "¿cómo están tus signos vitales?".
+  - **Zipkin:** Sistema que recibe y visualiza las **trazas**. Genera diagramas en cascada para ver gráficamente cuánto tardó cada microservicio en procesar una petición.
+  - **Promtail:** Es un agente recolector muy ligero. Su única tarea es leer los archivos de texto donde los contenedores escriben sus **logs** y enviarlos continuamente a Loki.
+  - **Loki:** Es el motor que almacena y busca los **logs** que le envía Promtail. A diferencia de otras herramientas, es muy eficiente porque no indexa todo el texto, sino solo etiquetas clave.
+  - **Grafana:** Es la interfaz visual principal. Se conecta a Prometheus, Loki y Zipkin para crear paneles interactivos (dashboards) que muestran todas nuestras métricas, logs y trazas en un solo lugar.
+- **Pull vs Push:** Prometheus usa el modelo *Pull* (él mismo va y extrae la información periódicamente), lo cual evita saturar un servicio que ya está sufriendo exigiéndole que empuje métricas. Zipkin usa el modelo *Push* (los servicios le envían información asincrónicamente) porque las trazas son eventos discretos que se generan en gran volumen por cada petición HTTP individual.
+- **OpenTelemetry & W3C Trace Context:** 
+  - **¿Qué es la CNCF?** La *Cloud Native Computing Foundation* es una fundación abierta (respaldada por la industria) que aloja y promueve proyectos críticos para infraestructuras en la nube (como Kubernetes, Prometheus y OTel).
+  - **Estándar Agnóstico:** OTel es un estándar "agnóstico", lo que significa que no está atado a ninguna herramienta comercial ni a un solo lenguaje de programación. Define una forma universal de generar telemetría, permitiendo cambiar el backend (ej. pasar de Zipkin a Jaeger) sin reescribir el código de los microservicios.
+  - **¿Cómo viaja el `traceId`?** El estándar *W3C Trace Context* define que cuando una petición entra al sistema, se genera un identificador único (Trace ID). Este ID se inyecta y viaja a través de una cabecera HTTP estandarizada llamada `traceparent`. Cuando el API Gateway en Go llama a Employees (NestJS), envía esta cabecera. El servicio receptor extrae el ID, hace su procesamiento, y lo propaga hacia el siguiente servicio. Así, toda la cadena de llamadas HTTP comparte el mismo ID ininterrumpidamente, garantizando que no se rompa la cascada visual en Zipkin.
 - **¿Por qué Zipkin sobre Jaeger?:** Por ligereza y simplicidad en el entorno Docker Compose local. Jaeger muchas veces demanda dependencias adicionales para persistencia no efímera, mientras Zipkin provee todo "out of the box" en un solo contenedor base.
 
 **2. Pruebas de Caos: Simulaciones de Fallos**
@@ -299,13 +312,15 @@ Para verificar la proactividad del sistema, se configuraron alertas usando el ca
 
 - **Prueba A (Caída de Servicio):** Si se ejecuta `docker stop departments-service`, Prometheus detecta en su siguiente ciclo que `up == 0`. Al pasar 1 minuto, Grafana evalúa la regla y dispara un correo electrónico crítico a través de MailHog indicando que el servicio no responde.
   
+  ![Estado inicial del dashboard](./docs/initial-status.png)
+  ![Servicio de emplados inactivo](./docs/employee-down.png)
   ![Dashboard mostrando la caída del servicio](./docs/caos-dashboard.png)
-  ![Alerta recibida en MailHog](./docs/caos-alerta.png)
+  ![Alerta recibida en MailHog](./docs/alert-email.png)
 
 - **Prueba B (Latencia y Análisis en Zipkin):** *"¿Qué servicio tardó más en responder y cómo se identificó?"*
   - **Respuesta Fundamentada:** Al inducir carga en la creación de un empleado (`POST /empleados`), identificamos usando la gráfica Waterfall de **Zipkin** que el **`employees-service`** acaparó el mayor tiempo total. En la cascada, su *span* fue el más largo porque se quedó bloqueado esperando una validación sincrónica HTTP del `departments-service`. Por el contrario, la creación de perfiles y notificaciones (que viajan por RabbitMQ asincrónicamente) solo sumaron ~5ms al *thread* principal. Todo esto fue visible gracias a que el `traceId` se propagó ininterrumpidamente desde el API Gateway en Go.
 
-  ![Trazas Waterfall en Zipkin](./docs/caos-trazas.png)
+  ![Trazas Waterfall en Zipkin](./docs/employee-creation-waterfall.png)
 
 ---
 
